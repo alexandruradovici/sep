@@ -3,7 +3,7 @@
   <head>
     <title>Secure Embedded Programming - Day 1</title>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="style.css"></link>
+    <link rel="stylesheet" href="../style/style.css"></link>
     <style>
       
     </style>
@@ -15,7 +15,7 @@ class: center, middle
 
 # Secure Embedded Programming
 
-.title[.center[![SecureEmbeddedProgramming](images/sep.png)]]
+.title[.center[![SecureEmbeddedProgramming](../images/sep.png)]]
 
 .left[
 Based on: [Rust ISP 2019](https://github.com/newpavlov/rust-isp-2019) slides  
@@ -69,7 +69,7 @@ This is what we would most probably use
 
 .center[a developer you will forget something eventually]
 
-.title[.center[![security](images/security.png)]]
+.title[.center[![security](../images/security.png)]]
 
 ---
 ## Use after free
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
   
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -191,7 +191,7 @@ int main() {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -215,7 +215,7 @@ int main() {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -236,7 +236,7 @@ int main() {
 
 ```
 
-.right_img[.right[![security](images/security.png)]]
+.right_img[.right[![security](../images/security.png)]]
 
 ---
 
@@ -250,7 +250,7 @@ int main() {
 6. Struct
 7. Traits
 
-.right[![rust](images/rust.svg)]
+.right[![rust](../images/rust.svg)]
 
 ---
 
@@ -265,7 +265,7 @@ fn main() {
 - `println!` is a macro, not a function, it replaces code
 - function `main` does not return a value (almost true)
 
-.card[.large[.center[![Hello Rust](images/sep_hello.png)]]]
+.card[.large[.center[![Hello Rust](../images/sep_hello.png)]]]
 
 ---
 ## `print!` & `println!`
@@ -291,7 +291,7 @@ let fmted = format!("{}, {:x}, {:?}", 12, 155, [1,2,3]);
 
 ---
 
-## Workpoint 1 .top_image[![Work In Progress](images/work_in_progress.png)]
+## Workpoint 1 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Write the text
 
@@ -406,7 +406,7 @@ let [c, d] = [1, 2];
 ```
 
 ---
-# Workpoint 2 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 2 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Print the a + b expression
 
@@ -439,7 +439,7 @@ class: split-70
 ]
 
 .column[
-.card[.small[.center[![Data Types](images/sep_datatypes.png)]]]
+.card[.small[.center[![Data Types](../images/sep_datatypes.png)]]]
 ]
 
 
@@ -457,7 +457,7 @@ let arr1 = [1, 2, 3]; // (array of 3 elements)
 let arr2 = [2; 32];   // (array of 32 `2`s)
 ```
 
-.card[.small[.center[![Array Define](images/sep_array_define.png) ![Array Access](images/sep_array_access.png)]]]
+.card[.small[.center[![Array Define](../images/sep_array_define.png) ![Array Access](../images/sep_array_access.png)]]]
 
 ---
 ## Slices
@@ -591,7 +591,7 @@ if x > 0 {
     - In this example is it unit `()`:
 
 ---
-# Workpoint 3 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 3 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Assign to `max` the value of the maximum between a and b  without changing its mutability.
 
@@ -632,7 +632,7 @@ match x {
 
 ---
 
-# Workpoint 4 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 4 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Write a `match` that prints if a number is odd or even.
 
@@ -647,7 +647,7 @@ let t = match n {
 println! ("{} is {}", n, t);
 ```
 
-.card[.small[.center[![Match](images/sep_match.png)]]]
+.card[.small[.center[![Match](../images/sep_match.png)]]]
 
 ---
 ## `match` pattern
@@ -675,7 +675,7 @@ println!("{}", s);
 
 ---
 
-# Workpoint 5 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 5 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Calculate the factorial (n!) of a number. Panic if computation is not possible.
 
@@ -749,7 +749,7 @@ for x in &xs {
 For loops are not expressions.
 
 ---
-# Workpoint 6 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 6 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Assign to `max` the value of the maximum number in the array. Do not use any function.
 
@@ -781,7 +781,7 @@ fn foo(x: T, y: U, z: V) -> T {
 ]
 
 .column[
-.card[.small[.center[![Function](images/sep_function.png)]]]
+.card[.small[.center[![Function](../images/sep_function.png)]]]
 ]
 
 <br>
@@ -817,7 +817,7 @@ fn square_bad(n: i32) -> i32 {
 
 ---
 
-# Workpoint 7 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 7 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 1. Write the `maximum` function that returns the maximum of a and b
 
@@ -890,7 +890,7 @@ enum Resultish {
 }
 ```
 
-.card[.small[.center[![Enum](images/sep_enum.png)]]]
+.card[.small[.center[![Enum](../images/sep_enum.png)]]]
 
 ---
 class: split-70
@@ -914,7 +914,7 @@ match make_request() {
 ]
 
 .column[
-.card[.small_vertical[.center[![Enum](images/sep_match_example.png)]]]
+.card[.small_vertical[.center[![Enum](../images/sep_match_example.png)]]]
 ]
 
 ---
@@ -940,7 +940,7 @@ T is any valid type
 ]
 
 .column[
-.card[.small_vertical[.center[![Option](images/sep_option.png)]]]
+.card[.small_vertical[.center[![Option](../images/sep_option.png)]]]
 ]
 
 ---
@@ -969,7 +969,7 @@ fn main () {
 ```
 
 ---
-# Workpoint 8 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 8 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Write the factorial (n!) function without panicing if the computation is not possible. Use one single `println!`.
 
@@ -1061,7 +1061,7 @@ fn main() {
 }
 ```
 
-.bottom_image[![Work In Progress](images/work_in_progress.png)] Fix the example!
+.bottom_image[![Work In Progress](../images/work_in_progress.png)] Fix the example!
 
 ---
 ## Structures
@@ -1155,7 +1155,7 @@ match c {
 ```
 
 ---
-## Workpoint 9 .top_image[![Work In Progress](images/work_in_progress.png)]
+## Workpoint 9 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Print the structure elements without using match.
 
@@ -1281,7 +1281,7 @@ fn main() {
 
 ---
 
-# Workpoint 10 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 10 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Write the implementation for the Professor struct
 
@@ -1342,12 +1342,12 @@ impl Person for Professor {
 ]
 
 .column[
-.card[.small_vertical[.center[![Struct](images/sep_struct.png)]]]
+.card[.small_vertical[.center[![Struct](../images/sep_struct.png)]]]
 ]
 
 ---
 
-# Workpoint 11 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 11 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Implement `Person` for `Professor` and `Student`
 
@@ -1388,7 +1388,7 @@ Hint: to copy a string, getv a `str` and use the `to_string` method.
 
 ---
 
-# Workpoint 12 .top_image[![Work In Progress](images/work_in_progress.png)]
+# Workpoint 12 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
 Make the source code work:
 
@@ -1425,7 +1425,7 @@ fn main () {
     </textarea>
     <script src="https://remarkjs.com/downloads/remark-latest.min.js">
     </script>
-    <script src="playground.js">
+    <script src="../script/playground.js">
     </script>
     <script>
       var slideshow = remark.create({
