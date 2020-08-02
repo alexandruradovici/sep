@@ -1,0 +1,145 @@
+@import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+        vertical-align: top;
+      }
+      .remark-inline-code { font-family: 'Ubuntu Mono'; }
+
+      .column:first-of-type {float:left}
+    .column:last-of-type {float:right}
+
+    .split-30 .column:first-of-type {width: 30%}
+    .split-30 .column:last-of-type {width: 70%}
+    .split-40 .column:first-of-type {width: 40%}
+    .split-40 .column:last-of-type {width: 60%}
+    .split-50 .column:first-of-type {width: 50%}
+    .split-50 .column:last-of-type {width: 50%}
+    .split-60 .column:first-of-type {width: 60%}
+    .split-60 .column:last-of-type {width: 40%}
+    .split-70 .column:first-of-type {width: 70%}
+    .split-70 .column:last-of-type {width: 30%}
+
+	  code {
+			max-height: 22pc;
+			overflow-y: scroll;
+		}
+
+		.pre2 {
+			height: 14pc;
+			overflow-y: scroll;
+    }
+    
+    .top_image img {
+      width: 55px;
+      height: 55px;
+    }
+
+    .bottom_image img {
+      width: 25px;
+      height: 25px;
+    }
+
+    .title img {
+        width: 550px;
+      }
+
+    .right_img img {
+    width: 120px;
+    }
+
+    .card img {
+        border: solid;
+        border-width: 1px;
+        border-radius: 20px;
+    }
+
+    .large img {
+        width: 500px;
+    }
+
+    .small img {
+        width: 200px;
+    }
+
+    .large_vertical img {
+        width: 350px;
+    }
+
+    .small_vertical img {
+        width: 140px;
+    }
+  
+a {
+    color: #428bca;
+    text-decoration: none;
+  }
+  
+  a:hover, a:focus {
+    color: #2a6496;
+    text-decoration: underline;
+  }
+  
+  .stealth {
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .btn {
+    color: #fff;
+    background-color: #428bca;
+    border-color: #357ebd;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    height: 1.5em;
+    width: 100%;
+    padding: 1px;
+    text-align: center;
+    display: block;
+  }
+  
+  .btn:hover, .btn:focus, .btn:active {
+    color: #fff;
+    background-color: #3276b1;
+    border-color: #285e8e;
+    text-decoration: none;
+  }
+  
+  .btn img {
+    height: 1.25em;
+  }
+  
+  hr {
+    border: 0;
+    height: 1px;
+    background: #ccc;
+  }
+  
+  table {
+    border-collapse: collapse;
+  }
+  
+  td, th, tr {
+    padding: 3px 4px;
+    border: 1px solid gray;
+  }
+  
+  /* run button on rust snippets */
+  code.c { position: relative; }
+  code.rust { position: relative; }
+  a.test-arrow {
+    display: inline-block;
+    position: absolute;
+  
+    background-color: #4e8bca;
+    color: #f5f5f5;
+    padding: 5px 10px 5px 10px;
+    border-radius: 5px;
+    top: 5px;
+    right: 5px;
+  }
+  

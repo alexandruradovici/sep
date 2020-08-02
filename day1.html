@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Embedded Programming - Day 1</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="style.css"></link>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Secure Embedded Programming
+
+.title[.center[![SecureEmbeddedProgramming](images/sep.png)]]
+
+.left[
+Based on: [Rust ISP 2019](https://github.com/newpavlov/rust-isp-2019) slides  
+Alexandru Radovici, ilustrations by [Mieuneli](http://miau.laura.ro)
+]
+
+---
+
+# Day 1
+
+1. Languages
+2. Security from the language point of view
+3. Rust
+
+---
+# Old kids on the block
+
+- C was developed __50 years__ ago
+- is ok when only geeks use computers
+
+Why now?
+- C was the only language used for OS
+- C allows you to do anything
+- few people write code in C, most of them use C++, C#, Java and others
+  - unsless you write drivers or embedded software
+  - C++ is another funny story, what about [Go](https://golang.org/)?
+
+We have new tools available
+- now we have languages like [Rust](https://www.rust-lang.org/) and [D](https://dlang.org/)
+
+---
+
+# New kids on the block
+
+This is what we would most probably use
+
+- Math - [Python](https://www.python.org/)
+- Low level - [Rust](https://www.rust-lang.org/)
+- Services (web servers ...) - [Go](https://golang.org/)
+- Applications
+  - enterprise - [Kotlin](https://kotlinlang.org/)
+  - web applications - [TypeScript](https://www.typescriptlang.org/)
+  - mobile - [Kotlin](https://kotlinlang.org/) / [Swift](https://developer.apple.com/swift/)
+
+- Rocket Science (we assume you work for NASA) - [Matlab](https://www.mathworks.com/products/matlab.html)
+- Electrical Engineering - [LabView](https://www.ni.com/ro-ro/shop/labview.html)
+- Scripting - [Deno](https://deno.land/)
+
+---
+# Security
+
+.center[a developer you will forget something eventually]
+
+.title[.center[![security](images/security.png)]]
+
+---
+## Use after free
+
+What will this sequence print?
+
+```c
+// program: gerbil-snail-tamarin
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+  int *array=(int*)malloc (sizeof(int)*100);
+  array[1] = 120;
+  free (array);
+  printf ("%d\n", array[1]);
+  return 0;
+}
+  
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## Heap overflow
+
+What will this sequence print?
+
+```c
+// program: phil-mouse-bear
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+    // fill memory
+    int *data = (int*)malloc (sizeof(int)*700);
+    for (int i=0; i< 700; i++)
+    {
+        data[i] = 0xBEEFBEEF;
+    }
+    free (data);
+    
+    // alocate
+	int *array=(int*)malloc (sizeof(int)*100);
+	for (int i=0; i< 100; i++) {
+	    array[i] = 0;
+	}
+	int value=array[500];
+	free (array);
+	
+	printf ("value %d\n", value);
+	return 0;
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## Stack overflow
+
+What will this sequence print?
+
+```c
+// program: cassowary-finch-moose
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+	int stack_array[100];
+	stack_array[1] = 0;
+	printf ("%d\n", stack_array[100]);
+	return 0;
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## `gets`
+
+Even the compiler notices that this is wrong
+
+```c
+// program: pony-porcupine-pony
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+	char s[10];
+	gets(s);
+	return 0;
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## Memory leaks
+
+```c
+// program: parrot-quail-monkey
+#include <stdlib.h>
+#include <stdio.h>
+
+void *p;
+
+int main() {
+	p = malloc(7);
+	p = NULL; // The memory is leaked here.
+	return 0;
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## Out of scope
+
+```c
+// program:quetzal-ape-buffalo
+#include <stdlib.h>
+#include <stdio.h>
+
+int *p = 0;
+
+int main() {
+	{
+		int x = 0;
+		p = &x;
+	}
+	*p = 5;
+	return 0;
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+## `printf`
+
+```c
+// program: kangaroo-kangaroo-dragonfly
+#include <stdlib.h>
+#include <stdio.h>
+
+#define MAX_SIZE 10
+
+int main() {
+	char s[MAX_SIZE]; 
+    fgets (s, MAX_SIZE-1, stdin);
+    printf (s);
+}
+
+```
+
+.right_img[.right[![security](images/security.png)]]
+
+---
+
+# Rust
+
+1. Simple Rust
+2. Types
+3. Control Flow
+4. Expressions
+5. Enum
+6. Struct
+7. Traits
+
+.right[![rust](images/rust.svg)]
+
+---
+
+# Simple Rust 
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+- `println!` is a macro, not a function, it replaces code
+- function `main` does not return a value (almost true)
+
+.card[.large[.center[![Hello Rust](images/sep_hello.png)]]]
+
+---
+## `print!` & `println!`
+- Print stuff out. Yay.
+- Use `{}` for general string interpolation, and `{:?}` for debug printing.
+    - Some types can only be printed with `{:?}`, like arrays and `Vec`s.
+
+```rust
+print!("{}, {}, {}", "foo", 3, true);
+// => foo, 3, true
+println!("{:?}, {:?}", "foo", [1, 2, 3]);
+// => "foo", [1, 2, 3]
+```
+
+
+## `format!` 
+- Uses `println!`-style string interpolation to create formatted `String`s.
+
+```rust
+let fmted = format!("{}, {:x}, {:?}", 12, 155, [1,2,3]);
+// fmted == "12, 9b, [1,2,3]"
+```
+
+---
+
+## Workpoint 1 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Write the text
+
+```rust
+// let name = ...
+println! ("Hello IP Workshop, I am {} and Rust is awseome", );
+```
+
+---
+
+## `panic!(msg)`
+- Exits current task with given message.
+- Don't do this lightly! It is better to handle and report errors explicitly.
+
+```rust
+if x < 0 {
+    panic!("Oh noes!");
+}
+```
+
+## `assert!` & `assert_eq!`
+
+- `assert!(condition)` panics if `condition` is `false`.
+- `assert_eq!(left, right)` panics if `left != right`.
+- `debug_assert!(condition)` and `debug_assert_eq!(left, right)` work in debug build, but omitted in release build.
+
+```rust
+let actual = 1 + 2;
+assert!(actual == 3);
+assert_eq!(3, actual);
+```
+
+---
+## `unreachable!()`
+
+- Used to indicate that some code should not be reached.
+- `panic!`s when reached.
+- Can be useful to track down unexpected bugs (e.g. optimization bugs).
+
+```rust
+if false {
+    unreachable!();
+}
+```
+
+
+## `unimplemented!()`
+
+- Shorthand for `panic!("not yet implemented")`.
+
+```rust
+fn sum(x: &[i32]) -> i32 {
+    // TODO
+    unimplemented!();
+}
+```
+
+---
+
+## `dbg!()`
+
+- A macro for quick and dirty debugging with which you can inspect the value of a given expression.
+- Was added in Rust 1.32.
+
+```rust
+let a = 2;
+let b = dbg!(a * 2) + 1;
+//      ^-- prints: [src/main.rs:2] a * 2 = 4
+assert_eq!(b, 5);
+```
+
+---
+
+## Variable Bindings ###
+- Variables are bound with `let`:
+```rust
+let x = 17;
+```
+
+- Bindings are implicitly-typed: the compiler infers based on context.
+- The compiler can't always determine the type of a variable, so sometimes you
+  have to add type annotations.
+```rust
+let x: i16 = 17;
+```
+
+- Variables are inherently immutable:
+```rust
+let x = 5;
+x += 1; // error: re-assignment of immutable variable x
+let mut y = 5;
+y += 1; // OK!
+```
+
+---
+## Variable Bindings ###
+- Bindings may be shadowed:
+```rust
+let x = 17;
+let y = 53;
+let x = "Shadowed!";
+// x is not mutable, but we're able to re-bind it
+```
+
+- The shadowed binding for `x` above lasts until it goes out of scope.
+- Above, we've effectively lost the first binding, since both `x`s are in the same scope.
+
+- Patterns may also be used to declare variables:
+```rust
+let (a, b) = ("foo", 12);
+let [c, d] = [1, 2];
+```
+
+---
+# Workpoint 2 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Print the a + b expression
+
+```rust
+let a = 10;
+let b = 20;
+// print debug information for the a + b expression
+```
+
+There are some macros to help you.
+
+---
+class: split-70
+# Primitive Types 
+
+.column[
+- `unit`: () (similar with `void` from C)
+- `bool`: `true` and `false`
+- `char`: `'c'` or `'😺'` (`char`s are Unicode code-points, i.e. 4 bytes long!)
+
+- Numerics: specify the signedness and size.
+    - `i8`, `i16`, `i32`, `i64`, `isize`
+    - `u8`, `u16`, `u32`, `u64`, `usize`
+    - `f32`, `f64`
+    - `isize` & `usize` are the size of pointers (and therefore have
+        machine-dependent size)
+    - Literals are spelled like `10i8`, `10u16`, `10.0f32`, `10usize`.
+    - Type inference for non-specific literals default to `i32` or `f64`:
+      - e.g. `10` defaults to `i32`, `10.0` defaults to `f64`.
+]
+
+.column[
+.card[.small[.center[![Data Types](images/sep_datatypes.png)]]]
+]
+
+
+---
+## Arrays
+- Arrays are generically of type `[T; N]`.
+    - N is a compile-time _constant_. Arrays cannot be resized.
+    - Array access is bounds-checked at runtime.
+    - No const generics yet. (planned to be added in 2019)
+- Arrays are indexed with `[]` like most other languages:
+    - `arr[3]` gives you the 4th element of `arr`
+
+```rust
+let arr1 = [1, 2, 3]; // (array of 3 elements)
+let arr2 = [2; 32];   // (array of 32 `2`s)
+```
+
+.card[.small[.center[![Array Define](images/sep_array_define.png) ![Array Access](images/sep_array_access.png)]]]
+
+---
+## Slices
+- Generically of type `&[T]`
+- A "view" into an array (or heap allocated data) by reference
+- Not created directly, but are borrowed from other variables
+- Mutable `&mut [T]` or immutable `&[T]`
+
+```rust
+let arr = [0, 1, 2, 3, 4, 5];
+let val = arr[0];               // val = 0
+let total_slice = &arr;         // Slice all of `arr`
+let total_slice = &arr[..];     // Same, but more explicit
+let partial_slice = &arr[2..5]; // [2, 3, 4]
+```
+
+---
+## Strings
+- Two types of Rust strings: `String` and `&str`.
+- `String` is a heap-allocated, growable vector of characters.
+- `&str` is a type&sup1; that's used to slice into `String`s.
+- String literals like `"foo"` are of type `&str`.
+- Strings are guaranteed to be encoded using UTF-8
+
+```rust
+let s: &str = "galaxy";
+let s2: String = "галактика".to_string();
+let s3: String = String::from("銀漢");
+let s4: &str = &s3;
+```
+
+```rust
+let s1 = "foobar";
+// You can slice strings:
+let s2 = &s1[1..3];
+// But you can't index with []
+// you can use `s1.chars().nth(1).unwrap()` instead
+let s3 = s1[1] // does not work!
+```
+
+&sup1;`str` is an unsized type, which doesn't have a compile-time known size,
+and therefore cannot exist by itself.
+
+---
+## Tuples 
+- Fixed-size, ordered, heterogeneous lists
+- Index into tuples with `foo.0`, `foo.1`, etc.
+- Can be destructured for example in `let` bindings
+
+```rust
+let foo: (i32, char, f64) = (72, 'H', 5.1);
+let (x, y, z) = (72, 'H', 5.1);
+let (a, b, c) = foo; // a = 72, b = 'H', c = 5.1
+```
+  
+---
+## References 
+
+- Reference *types* are written with an `&`: `&i32`.
+- References can be taken with `&` (like C/C++).
+- References can be _dereferenced_ with `*` (like C/C++).
+- References are guaranteed to be valid.
+    - Validity is enforced through compile-time checks!
+- These are *not* the same as pointers!
+- Reference lifetimes are pretty complex, as we'll explore later on in the course.
+
+```rust
+let x = 12;
+let ref_x = &x;
+println!("{}", *ref_x); // 12
+```
+
+---
+# Casting 
+
+- Cast between types with `as`:
+
+```rust
+let x: i32 = 100;
+let y: u32 = x as u32;
+```
+
+- Naturally, you can only cast between types that are safe to cast between.
+    - No casting `[i16; 4]` to `char`! (This is called a "non-scalar" cast)
+    - There are unsafe mechanisms to overcome this, if you know what you're doing.
+
+
+---
+# Expressions
+
+- (Almost!) everything is an expression: something which returns a value.
+    - Exception: variable bindings are not expressions.
+- The "nothing" type is called "unit", which is written `()`.
+    - The _type_ `()` has only one value: `()`.
+    - `()` is the default return type.
+- Discard an expression's value by appending a semicolon. Now it returns `()`.
+    - Hence, if a function ends in a semicolon, it returns `()`.
+
+```rust
+fn foo() -> i32 { 5 }
+fn bar() -> () { () }
+fn baz() -> () { 5; }
+fn qux()       { 5; }
+```
+
+
+---
+# Control Flow
+
+- `if` and `match` 
+- `while` and `loop`
+- `for` iteration
+
+---
+## If Statements
+
+```rust
+let x = 10;
+
+if x > 0 {
+    println! ("positive");
+} else if x == 0 {
+    println! ("zero");
+} else {
+    println! ("negative");
+}
+```
+- No parens necessary.
+- Entire if statement evaluates to one expression, so every arm must end with
+  an expression of the same type.
+    - In this example is it unit `()`:
+
+---
+# Workpoint 3 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Assign to `max` the value of the maximum between a and b  without changing its mutability.
+
+```rust
+let a = 10;
+let b = 100;
+let max = ...
+
+println! ("The maximum {}", max);
+```
+
+Remeber, **almost everything is an expression** that returns a value.
+
+---
+
+## `match` 
+- `switch` on steroids.
+
+```rust
+let x = 3;
+
+match x {
+    1 => println!("one fish"),  // <- comma required
+    2 => {
+        println!("two fish");
+        println!("two fish");
+    },  // <- comma optional when using braces
+    // we can match several patterns in one arm
+    3 | 4 => println!("three or four, dunno"),
+    _ => println!("no fish for you"), // "otherwise" case
+}
+```
+
+- `match` takes an expression (`x`) and branches on a list of `value => expression` statements.
+- The entire match evaluates to one expression.
+    - Like `if`, all arms must evaluate to the same type.
+- `_` is commonly used as a catch-all (cf. Haskell, OCaml)
+
+---
+
+# Workpoint 4 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Write a `match` that prints if a number is odd or even.
+
+```rust
+let n = 10;
+
+let t = match n {
+  ... =>
+  ... =>
+}
+
+println! ("{} is {}", n, t);
+```
+
+.card[.small[.center[![Match](images/sep_match.png)]]]
+
+---
+## `match` pattern
+```rust
+let x = 3;
+let y = -3;
+let q = 10;
+
+let s = match (x, y) {
+    (1, 1) => "one".to_string(),
+    (2, j) => format!("two, {}", j),
+    (_, 3) => "three".to_string(),
+    (i, j) if i > 5 && j < 0 => "On guard!".to_string(),
+    // NB: note that we do not test x == 10 here!
+    (q, k) => format!("???: {} {}", q, k),
+};
+println!("{}", s);
+```
+
+- The matched expression can be any expression (l-value), including tuples and function calls.
+    - Matches can bind variables. `_` is a throw-away variable name.
+- You _must_ write an exhaustive match in order to compile.
+- Use `if`-guards to constrain a match to certain conditions.
+- Patterns can get very complex.
+
+---
+
+# Workpoint 5 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Calculate the factorial (n!) of a number. Panic if computation is not possible.
+
+```rust
+fn factorial (n: i32) -> u32 {
+  match n {
+    _ => unimplemented!()
+  }
+}
+
+fn main () {
+  println! ("-10!: {} 0!: {} 10: {}", factorial(-10), factorial(0), factorial(10));
+}
+```
+
+You will have to perform a typecast.
+
+---
+
+## `while` 
+- Loops come in three flavors: `while`, `loop`, and `for`.
+    - `break` and `continue` exist just like in most languages
+
+- `while` works just like you'd expect:
+
+```rust
+let mut x = 0;
+while x < 100 {
+    x += 1;
+    println!("x: {}", x);
+}
+```
+
+While loops are not expressions.
+
+---
+## `loop` 
+- `loop` is equivalent to `while true`, a common pattern.
+    - Plus, the compiler can make optimizations knowing that it's infinite.
+
+```rust
+let mut x = 0;
+loop {
+    x += 1;
+    println!("x: {}", x);
+}
+```
+
+Loops are not expressions.
+
+---
+## `for` iteration
+- `for` is the most different from most C-like languages
+     - `for` loops use an _iterator expression_:
+     - `n..m` creates an iterator from n to m (exclusive).
+     - Some data structures can be used as iterators, like arrays and `Vec`s.
+
+```rust
+// Loops from 0 to 9.
+for x in 0..10 {
+    println!("{}", x);
+}
+
+let xs = [0, 1, 2, 3, 4];
+// Loop through elements in a slice of `xs`.
+for x in &xs {
+    println!("{}", x);
+}
+```
+
+For loops are not expressions.
+
+---
+# Workpoint 6 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Assign to `max` the value of the maximum number in the array. Do not use any function.
+
+```rust
+let v = [1,2,4,5,23,54,6,7,34,6,6,3];
+let max = v[0];
+// ...
+
+println! ("The maximum {}", max);
+```
+
+Remeber array slices are iterators that return references to array elements.
+
+---
+class: split-50
+# Functions 
+
+```rust
+fn foo(x: T, y: U, z: V) -> T {
+    // ...
+}
+```
+.column[
+- `foo` is a function that takes three parameters:
+    - `x` of type `T`
+    - `y` of type `U`
+    - `z` of type `V`
+- `foo` returns a `T`.
+]
+
+.column[
+.card[.small[.center[![Function](images/sep_function.png)]]]
+]
+
+<br>
+
+- Must explicitly define argument and return types.
+    - The compiler is actually smart enough to figure this out for you, but
+      Rust's designers decided it was better practice to force explicit function
+      typing.
+
+---
+## Functions Return
+
+- The final expression in a function is its return value.
+    - Use `return` for _early_ returns from a function.
+
+```rust
+fn square(n: i32) -> i32 {
+    n * n
+}
+
+fn squareish(n: i32) -> i32 {
+    if n < 5 { return n; }
+    n * n
+}
+
+fn square_bad(n: i32) -> i32 {
+    n * n;
+}
+```
+
+- The last one won't even compile!
+  - Why? 
+
+---
+
+# Workpoint 7 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+1. Write the `maximum` function that returns the maximum of a and b
+
+  ```rust
+  let a = 10;
+  let b = 100;
+  let max = maximum (a, b);
+  
+  println! ("The maximum {}", max);
+  ```
+
+2.  Write the `maximum` function that returns the maximum element of `v`.
+
+  ```rust
+  let v = [1,2,4,5,23,54,6,7,34,6,6,3];
+  let max = maximum (&v);
+  
+  println! ("The maximum {}", max);
+  ```
+
+  Hint: You have to send a refernce of `v` to the function.
+
+---
+
+# Modules
+
+1. `mod` statement
+
+  ```rust
+  mod security {
+      fn secure () {
+        // ...
+      }
+  }
+
+  fn main () {
+      security::secure ();
+  }
+  ```
+
+  Why does it not compile?
+
+2.  `mod` source
+
+  ```rust
+  mod security; // <- loads module from security.rs
+
+  fn main () {
+      security::secure ();
+  }
+  ```
+
+---
+
+# Enum
+
+- An enum, or "sum type", is a way to express some data that may be one of several things.
+- Similar to the union type in C
+- Much more powerful than in Java, C, C++, C#...
+- Each enum variant can have optional payloads:
+    - no data (unit variant)
+    - named data (struct variant)
+    - unnamed ordered data (tuple variant)
+
+```rust
+enum Resultish {
+    Ok,
+    Warning { code: i32, message: String },
+    Err(String)
+}
+```
+
+.card[.small[.center[![Enum](images/sep_enum.png)]]]
+
+---
+class: split-70
+# Enum `match`-ing
+
+- Enum variants are namespaced by their enum type: `Resultish::Ok`.
+    - You can import all variants with `use Resultish::*`.
+- Enums, much as you'd expect, can be matched on like any other data type.
+
+.column[
+```rust
+match make_request() {
+    Resultish::Ok =>
+        println!("Success!"),
+    Resultish::Warning { code, message } =>
+        println!("Warning: {}!", message),
+    Resultish::Err(s) =>
+        println!("Failed with error: {}", s),
+}
+```
+]
+
+.column[
+.card[.small_vertical[.center[![Enum](images/sep_match_example.png)]]]
+]
+
+---
+class: split-70
+
+# `Option`
+
+- Rust has no NULL type
+- a variable of a type has to store a type
+- a reference has to exist and point to a valid memory
+
+Use `Option` enum
+
+.column[
+```rust
+enum Option<T> {
+  Some(T)
+  None,
+}
+```
+
+T is any valid type
+]
+
+.column[
+.card[.small_vertical[.center[![Option](images/sep_option.png)]]]
+]
+
+---
+
+## `Option` example
+
+Rust automatically imports  `Option::*`
+
+```rust
+fn integer_division (a:isize, b: isize) -> Option<isize> {
+  if b == 0 {
+    None
+  } else {
+    Some(a / b)
+  }
+}
+
+fn main () {
+  let x = 120;
+  let y = 7;
+  match integer_division (x, y) {
+    Some(d) => println! ("{}:{} = {}", x, y, d),
+    None => println! ("division by 0")
+  };
+}
+```
+
+---
+# Workpoint 8 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Write the factorial (n!) function without panicing if the computation is not possible. Use one single `println!`.
+
+```rust
+fn factorial (n: i32) -> Option<u32> {
+  match n {
+    _ => unimplemented!()
+  }
+}
+
+fn main () {
+  println! ("-10!: {} 0!: {} 10!: {}", factorial(-10), factorial(0), factorial(10));
+  // prints -10!: not possible, 0!: 0, 10!: 3628800
+}
+```
+
+Hint: take a look at `if let`.
+
+---
+
+## Structs
+
+- A struct declaration:
+    - Fields are declared with `name: type`.
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+- By convention, structs have `CamelCase` names, and their fields have `snake_case` names.
+- Structs may be instantiated with fields assigned in braces.
+
+```rust
+let origin = Point { x: 0, y: 0 };
+```
+
+---
+## Structs
+
+- Struct fields may be accessed with dot notation.
+- Structs may not be partially-initialized.
+    - You must assign all fields upon creation, or declare an uninitialized
+      struct that you initialize later.
+
+```rust
+let mut p = Point { x: 19, y: 8 };
+p.x += 1;
+p.y -= 1;
+```
+
+---
+
+
+# Structures
+
+- Structs do not have field-level mutability.
+- Mutability is a property of the **variable binding**, not the type.
+
+```rust
+struct Point {
+    x: i32,
+    mut y: i32, // Illegal!
+}
+```
+
+---
+## Structures privacy
+
+- Structs are namespaced with their module name.
+    - The fully qualified name of `Point` is `foo::Point`.
+- Struct fields are private by default.
+    - They may be made public with the `pub` keyword.
+- Private fields may only be accessed from within the module where the struct is
+    declared.
+
+```rust
+mod foo {
+    pub struct Point {
+        pub x: i32,
+        y: i32,
+    }
+}
+
+fn main() {
+    let b = foo::Point { x: 12, y: 12 };
+}
+```
+
+.bottom_image[![Work In Progress](images/work_in_progress.png)] Fix the example!
+
+---
+## Structures
+
+```rust
+mod foo {
+    pub struct Point {
+        pub x: i32,
+        y: i32,
+    }
+
+    // Creates and returns a new point
+    pub fn new(x: i32, y: i32) -> Point {
+        Point { x: x, y: y }
+    }
+}
+```
+
+- `new` is inside the same module as `Point`, so accessing private fields is
+  allowed.
+- `new` is not a keywork in rust
+
+---
+## Structures `match`ing
+
+- Destructure structs with `match` statements.
+
+```rust
+pub struct Point {
+    x: i32,
+    y: i32,
+}
+
+match p {
+    Point { x, y } => println!("({}, {})", x, y)
+}
+```
+
+---
+## Structures `match`ing
+
+- Some other tricks for struct `match`es:
+
+```rust
+match p {
+    Point { y: y1, x: x1 } => println!("({}, {})", x1, y1)
+}
+
+match p {
+    Point { y, .. } => println!("{}", y)
+}
+```
+- Fields do not need to be in order.
+- List fields inside braces to bind struct members to those variable names.
+    - Use `struct_field: new_var_binding` to change the variable it's bound to.
+- Omit fields: use `..` to ignore all unnamed fields.
+
+---
+## Structures Update Syntax
+
+- A struct initializer can contain `.. s` to copy some or all fields from `s`.
+- Any fields you don't specify in the initializer get copied over from the target struct.
+- The struct used must be of the same type as the target struct.
+    - No copying same-type fields from different-type structs!
+
+```rust
+struct Foo { a: i32, b: i32, c: i32, d: i32, e: i32 }
+
+let mut x = Foo { a: 1, b: 1, c: 2, d: 2, e: 3 };
+let x2 = Foo { e: 4, .. x };
+
+// Useful to update multiple fields of the same struct:
+x = Foo { a: 2, b: 2, e: 2, .. x };
+```
+
+---
+## Tuple Structs
+
+- Variant on structs that has a name, but no named fields.
+- Have numbered field accessors, like tuples (e.g. `x.0`, `x.1`, etc).
+- Can also `match` these.
+
+```rust
+struct Color(i32, i32, i32);
+
+let mut c = Color(0, 255, 255);
+c.0 = 255;
+match c {
+    Color(r, g, b) => println!("({}, {}, {})", r, g, b)
+}
+```
+
+---
+## Workpoint 9 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Print the structure elements without using match.
+
+```rust
+struct Color(i32, i32, i32);
+
+let mut c = Color(0, 255, 255);
+println!("({}, {}, {})", ..., ..., ...)
+```
+
+---
+## Tuple Structs
+
+- Helpful if you want to create a new type that's not just an alias.
+    - This is often referred to as the "newtype" pattern.
+- These two types are structurally identical, but not equatable.
+
+```rust
+// Not equatable
+struct Meters(i32);
+struct Yards(i32);
+
+// May be compared using `==`, added with `+`, etc.
+type MetersAlias = i32;
+type YardsAlias  = i32;
+```
+
+---
+## Unit Structs (Zero-Sized Types)
+
+- Structs can be declared to have zero size.
+    - This struct has no fields!
+- We can still instantiate it.
+- It can be used as a "marker" type on other data structures.
+    - Useful to indicate, e.g., the type of data a container is storing.
+
+```rust
+struct Unit;
+
+let u = Unit;
+```
+
+---
+# Methods
+
+```rust
+impl Point {
+    pub fn distance(&self, other: Point) -> f32 {
+        let (dx, dy) = (self.x - other.x, self.y - other.y);
+        ((dx.pow(2) + dy.pow(2)) as f32).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point { x: 1, y: 2 };
+    p.distance();
+}
+```
+
+- Methods can be implemented for structs in an `impl` block.
+- Like fields, methods may be accessed via dot notation.
+- Can be made public with `pub`.
+    - `impl` blocks themselves don't need to be made `pub`.
+
+---
+## Methods
+
+- The first argument to a method, named `self`, determines what kind of ownership the method
+  requires.
+- `&self`: the method *borrows* the value.
+    - Use this unless you need a different ownership model.
+- `&mut self`: the method *mutably borrows* the value.
+    - The function needs to modify the struct it's called on.
+- `self`: the method takes ownership.
+    - The function consumes the value and may return something else.
+
+---
+## Methods
+
+```rust
+impl Point {
+    fn distance(&self, other: Point) -> f32 {
+        let (dx, dy) = (self.x - other.x, self.y - other.y);
+        ((dx.pow(2) + dy.pow(2)) as f32).sqrt()
+    }
+
+    fn translate(&mut self, x: i32, y: i32) {
+        self.x += x;
+        self.y += y;
+    }
+
+    fn mirror_y(self) -> Point {
+        Point { x: -self.x, y: self.y }
+    }
+}
+```
+
+- `distance` needs to access but not modify fields.
+- `translate` modifies the struct fields.
+- `mirror_y` returns an entirely new struct, consuming the old one.
+
+---
+## Associated Functions
+
+```rust
+impl Point {
+    fn new(x: i32, y: i32) -> Point {
+        Point { x: x, y: y }
+    }
+}
+
+fn main() {
+    let p = Point::new(1, 2);
+}
+```
+
+- Associated function: like a method, but does not take `self`.
+    - This is called with namespacing syntax: `Point::new()`.
+        - Not `Point.new()`.
+    - Like a "static" method in Java.
+- A constructor-like function is usually named `new`.
+    - No inherent notion of constructors, no automatic construction.
+
+---
+
+# Workpoint 10 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Write the implementation for the Professor struct
+
+```rust
+struct Person {
+  firstname: String,
+  lastname: String,
+  age: usize,
+}
+
+impl Person {
+  // new function
+  // setters for properties
+}
+
+fn main () {
+  let p = Person::new ("The", "Name", 9);
+  p.set_firstname ("New");
+  println! ("{} {} is now {}", p.firstname, p.lastname, p.age);
+}
+```
+
+There are lots of adaptations to be done for this.
+
+---
+class: split-70
+
+# Traits
+
+
+- Similar to interfaces in Java
+- Methods that types have to implement
+
+.column[
+```rust
+struct Professor {
+  firstname: String,
+  lastname: String,
+  age: usize,
+  // add subjects
+}
+
+trait Person {
+  fn get_name (&self) -> String;
+  fn get_job (&self) -> String;
+}
+
+impl Person for Professor {
+  fn get_name (&self) -> String {
+    // ...
+  }
+
+  fn get_job (&self) -> String {
+    // ...
+  }
+}
+```
+]
+
+.column[
+.card[.small_vertical[.center[![Struct](images/sep_struct.png)]]]
+]
+
+---
+
+# Workpoint 11 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Implement `Person` for `Professor` and `Student`
+
+```rust
+struct Professor {
+  firstname: String,
+  lastname: String,
+  age: usize,
+  // add subjects
+}
+
+struct Student {
+  firstname: String,
+  lastname: String,
+  age: usize,
+  // add classes
+}
+
+trait Person {
+  fn get_name (&self) -> String;
+  fn get_job (&self) -> String;
+}
+
+fn main () {
+  // make a student
+  let p = Professor::new ("John", "Doe", 20);
+  let s = Student::new ("Johnny", "Doe", 50);
+  // make a professor
+  println! ("{:?}", p);
+  println! ("{:?}", s);
+
+  println! ("{} is a {}", p.get_name (), p.job());
+  println! ("{} is a {}", s.get_name (), s.job());
+}
+```
+
+Hint: to copy a string, getv a `str` and use the `to_string` method.
+
+---
+
+# Workpoint 12 .top_image[![Work In Progress](images/work_in_progress.png)]
+
+Make the source code work:
+
+```rust
+struct Complex {
+    r: f64,
+    i: f64
+}
+
+fn main () {
+    let n1 = Complex::new (2, 3);
+    let n2 = Complex::new (-2, 3);
+    let n3 = Complex::new (2, -3);
+    let n4 = Complex::new (3, 0);
+    let n5 = Complex::new (0, 3);
+
+    println! ("The number is {}", n1); // prints 2+3i
+    println! ("The number is {}", n2); // prints -2+3i
+    println! ("The number is {}", n3); // prints 2-3i
+    println! ("The number is {}", n4); // prints 3
+    println! ("The number is {}", n5); // prints 3i
+
+    println! ("The number is {}", n1-n1); // prints 0
+    println! ("The number is {}", n1+n2); 
+    println! ("The number is {}", n1-n2);
+    println! ("The number is {}", n1*n2);
+    println! ("The number is {}", n1/n2);
+    println! ("The numbers {} and {} are {}", n1, n2, if n1==n2 { "equal"} else {"not equal"});
+}
+```
+  - Hint: use the Add, Sub, Mul, Div and PartialEq traits. 
+  - Read the compiler hints carefully.
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="playground.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+		navigation: {
+				scroll: false
+			}
+    });
+    window.cPlaygroundUrl = "https://cplayground.com/";
+    window.playgroundUrl = "https://play.rust-lang.org/";
+    </script>
+  </body>
+</html>
