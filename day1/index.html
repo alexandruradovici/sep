@@ -1373,8 +1373,8 @@ trait Person {
 
 fn main () {
   // make a student
-  let p = Professor::new ("John", "Doe", 20);
-  let s = Student::new ("Johnny", "Doe", 50);
+  let p = Professor::new (String::from("John"), String::from("Doe"), 20);
+  let s = Student::new ("Johnny".to_string(), "Doe".to_string(), 50);
   // make a professor
   println! ("{:?}", p);
   println! ("{:?}", s);
