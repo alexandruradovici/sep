@@ -1298,8 +1298,8 @@ impl Person {
 }
 
 fn main () {
-  let p = Person::new ("The", "Name", 9);
-  p.set_firstname ("New");
+  let p = Person::new ("The".to_string(), String::from("Name"), 9);
+  p.set_firstname ("New".to_string());
   println! ("{} {} is now {}", p.firstname, p.lastname, p.age);
 }
 ```
