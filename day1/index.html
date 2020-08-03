@@ -1356,14 +1356,12 @@ struct Professor {
   firstname: String,
   lastname: String,
   age: usize,
-  // add subjects
 }
 
 struct Student {
   firstname: String,
   lastname: String,
   age: usize,
-  // add classes
 }
 
 trait Person {
@@ -1379,8 +1377,8 @@ fn main () {
   println! ("{:?}", p);
   println! ("{:?}", s);
 
-  println! ("{} is a {}", p.get_name (), p.job());
-  println! ("{} is a {}", s.get_name (), s.job());
+  println! ("{} is a {}", p.get_name (), p.get_job());
+  println! ("{} is a {}", s.get_name (), s.get_job());
 }
 ```
 
@@ -1419,7 +1417,7 @@ fn main () {
     println! ("The numbers {} and {} are {}", n1, n2, if n1==n2 { "equal"} else {"not equal"});
 }
 ```
-  - Hint: use the Add, Sub, Mul, Div and PartialEq traits. 
+  - Hint: use the Display, Add, Sub, Mul, Div and PartialEq traits. 
   - Read the compiler hints carefully.
 
     </textarea>
