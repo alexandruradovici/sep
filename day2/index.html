@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Embedded Programming - Day 1</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../style/style.css"></link>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Secure Embedded Programming
+
+.title[.center[![SecureEmbeddedProgramming](../images/sep.png)]]
+
+.left[
+Based on: [Rust ISP 2019](https://github.com/newpavlov/rust-isp-2019) slides  
+Alexandru Radovici, ilustrations by [Mieuneli](http://miau.laura.ro)
+]
+
+---
+
+# Day 2
+
+1. Tock Development Environment
+2. Hardware
+3. Tock
+4. Applications
+5. Arduino Shield
+
+---
+
+# Development Environment
+
+You will have to install:
+- [Visual Studio Code](https://code.visualstudio.com/) - a powerfull source code editor 
+    - [RLS](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) - the Rust extension
+    - [Remote SSH](https://code.visualstudio.com/docs/remote/ssh-tutorial) - the connection to the virtual machine
+    - [Live Share Extension Pack](https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare-pack) - so we can snoop on you
+
+- [VirtualBox](https://www.virtualbox.org/) - a Linux environment&sup1; with the Tock setup
+  - [Extension Pack](https://download.virtualbox.org/virtualbox/6.1.12/Oracle_VM_VirtualBox_Extension_Pack-6.1.12.vbox-extpack) - you will be able to see you USB devices in guest virtual machine
+
+- [Tock Virtual Machine](https://drive.google.com/drive/u/2/folders/1thj-DwDWb8MgghW5rzOR6kRyGjY6G3xI) - Import Appliance
+    - Windows: Make sure you select __Allow__ when you get a question from the Firewall
+
+&sup1;If you are running Linux, this step is recommended, not necessary.
+
+---
+## Virtual Box
+
+1. Install the [Extension Pack](https://download.virtualbox.org/virtualbox/6.1.12/Oracle_VM_VirtualBox_Extension_Pack-6.1.12.vbox-extpack)
+2. Import Appliance (Tock-Dev.ova)
+
+
+
+---
+## Visual Studio Code
+
+Setup the Extensions:
+  - [RLS](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) - the Rust extension
+  - [Remote SSH](https://code.visualstudio.com/docs/remote/ssh-tutorial) - the connection to the virtual machine
+  - [Live Share Extension Pack](https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare-pack) - so we can snoop on you
+
+.center[.title[![Remote SHH Link](../images/vscode_ssh.png)]]
+
+---
+
+### SSH connect
+
+1. Start the Virtual Machine with Tock
+2. Connect to host: `tock@localhost:2000`&sup1; (password: `tock`)
+
+.center[.title[![Remote SHH Link](../images/vscode_ssh_link.png)]]
+
+&sup1; Due to an issue with the Remote SSH Extension, you will always have to write `tock@localhost:2000`, it will not be remebered.
+
+---
+### Live Share
+
+.center[.title[![Remote SHH Link](../images/vscode_liveshare.png)]]
+
+
+You will need a github account.  
+Reload VS Code  
+Install live share libaries
+
+---
+
+class: split-50
+# STM32F412G Discovery Kit
+
+.column[
+- __STM32F412ZGT6__ MCU 
+- __1 Mbyte Flash__
+- __256 Kbytes__ of __RAM__
+- On-board __ST-LINK/V2-1 SWD debugger__
+- 1.54 inch 240x240 LCD 
+- capacitive touchscreen
+- I2S Audio CODEC
+- Stereo digital MEMS microphones
+- MicroSD™ card connector extension
+- I2C extension connector
+- __128 Mbit Quad-SPI Nor Flash__
+- Reset button and Joystick
+- Four color user LEDs.
+- Compatible with __Arduino™ Uno revision 3 connectors__
+]
+
+.column[
+.card[.small[.center[![Data Types](../images/sep_stm.png)]]]
+.card[.small_vertical[.center[![Data Types](../images/sep_hardware.png)]]]
+]
+
+---
+class: split-50
+# Microcontroller Memory Layout
+
+.column[
+Addresses from 0 to 4GB 
+- Flash - stores the programs (kewrnel and applications)
+- RAM - used while running
+- Hardware
+
+.card[.small_vertical[.center[![Memory Map](../images/sep_bus.png)]]]
+]
+
+.column[
+.card[.large_vertical[.center[![Memory Map](../images/sep_memory_map.png)]]]
+]
+
+
+---
+# Tock
+
+- A <b>preemptive</b> embedded OS (runs on MCUs)
+  - Cortex-M
+  - RISC-V
+- Uses memory protection (MPU required)
+- Has separate <b>kernel and user space</b>
+  - most embedded OS have the one piece software philosophy
+- Runs untrusted apps in user space
+- <b>Microkernel</b> architecture
+- Kernel (and drivers) written in Rust
+- Apps written in C/C++ or Rust (any language that can be compiled)
+
+.right[![Tock](../images/tock.svg)]
+
+---
+
+# Tock Stack
+
+.splash[.center[![Stack](../images/tock-stack.png)]]
+
+---
+
+# Let's write some code for Tock
+
+In `/home/tock` you have:
+```bash
++-- tock                # original Tock repositories
+|   +-- tock                # kernel
+|   +-- libtock-c           # C userspace
+|   +-- libtock-rs          # Rust userspace
+|
++-- /tock-ipw           # our Tock version (better STM support)
+|   +-- tock                # kernel
+|   +-- libtock-c           # C userspace
+|   +-- libtock-rs          # Rust userspace
+```
+
+.card[.small[.center[![Tock Stack](../images/sep_stack.png)]]]
+
+---
+class: split-50
+# A few words about how ARM-Cortex M boots
+
+.column[
+### Exceptions
+- Reset
+- Supervisor
+- SysTick 
+- Pending SV
+- Faults
+
+### Interrupts
+- Events from hardware
+]
+
+.column[
+.card[.large_vertical[.center[![Interrupts](../images/sep_interrupts.png)]]]
+]
+
+---
+# A few words about how Tock boots
+
+In `/home/tock/tock` you have:
+```bash
++-- tock            # kernel
+|   +-- arch            # code specific to MCUs (ARM, RISC-V)
+|   +-- boards          # code specific to boards (STM32F412G Discovery Kit)
+|   +-- capsules        # drivers
+|   +-- chips           # code specific to MCUs (STM32F412G, E310, )
+|   +-- doc             # documentation
+|   +-- kernel          # actual kernel (scheduler, ipc, memory)
+|   +-- libraries       # libraries used by all the source code
+|   +-- tools           # scripts for testing on other tools
+|   +-- vagrant         # VM setup (different from ours)
+```
+
+![Source Dependencies](../images/source_dependencies.svg)
+
+---
+
+# Workpoint 1 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Use the VS Code shell and the `tree` command to list the Tock folders.
+
+Hint: Install `tree` uysing the apt-get command.
+
+---
+class: split-50
+# Interrupt vector and Reset Handler
+
+.center[.card[.large_vertical[![Data Types](../images/sep_boot.png)]] .card[.large_vertical[![Data Types](../images/sep_reset_handler.png)]]]
+
+---
+
+# Connect the board
+
+Steps to connect the board
+
+1. Connect the STM32F412G Discovery Kit (the board) to your computer
+2. Connect the USB to the Virtual Machine (VM)
+3. Check that the VM can access the USB
+
+Upload the Tock kernel to the board
+
+---
+
+## 1. Connect STM32F412G Discovery Kit (the board)
+
+Use the ST-LINK/V2-1 micro USB port&sup1;
+
+.title[.center[![Stack](../images/stm32f412gdiscovery.jpg)]]
+
+&sup1; The board has two micro USB ports, a USB_USER port and a ST-LINK/V2-1 port
+
+---
+## 2. Connect the USB to the Virtual Machine
+
+- The VM window has some buttons at the bottom, click the USB
+- Select the option with `STM32 STLink`...&sup1; &sup2;
+
+.screenshot[.center[![Stack](../images/vm_stm.png)]]
+
+&sup1; If it does not show up, make sure you have the [Extension Pack](https://download.virtualbox.org/virtualbox/6.1.12/Oracle_VM_VirtualBox_Extension_Pack-6.1.12.vbox-extpack) installed  
+&sup2; The name can be different
+---
+## 3. Check that the VM can access the USB
+
+In the VS Code shell, run
+
+```bash
+tock@tock-dev:~/tock/tock$ dmesg
+# this should output
+   ...
+[  244.544375] usb 2-2: new full-speed USB device number 3 using ohci-pci  
+[  244.893242] usb 2-2: New USB device found, idVendor=0483, idProduct=374b, bcdDevice= 1.00
+[  244.893245] usb 2-2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[  244.893247] usb 2-2: Product: STM32 STLink
+[  244.893248] usb 2-2: Manufacturer: STMicroelectronics
+[  244.893249] usb 2-2: SerialNumber: 0671FF333036434B43073009
+[  244.942790] cdc_acm 2-2:1.2: ttyACM0: USB ACM device
+[  244.947700] usbcore: registered new interface driver cdc_acm
+[  244.947702] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+[  244.950631] usb-storage 2-2:1.1: USB Mass Storage device detected
+[  244.951261] scsi host3: usb-storage 2-2:1.1
+[  244.955378] usbcore: registered new interface driver usb-storage
+[  244.960889] usbcore: registered new interface driver uas
+[  246.004913] scsi 3:0:0:0: Direct-Access     MBED     microcontroller  1.0  PQ: 0 ANSI: 2
+[  246.005182] sd 3:0:0:0: Attached scsi generic sg2 type 0
+[  246.022870] sd 3:0:0:0: [sdb] 6216 512-byte logical blocks: (3.18 MB/3.04 MiB)
+[  246.033852] sd 3:0:0:0: [sdb] Write Protect is off
+[  246.033855] sd 3:0:0:0: [sdb] Mode Sense: 03 00 00 00
+[  246.044741] sd 3:0:0:0: [sdb] No Caching mode page found
+[  246.044770] sd 3:0:0:0: [sdb] Assuming drive cache: write through
+[  246.211899] sd 3:0:0:0: [sdb] Attached SCSI removable disk
+```
+
+You should see something similar, search for __ttyACM0__&sup1;
+
+&sup1; The name can be different, like ttyACM1 or ttyACM2
+
+---
+
+# Upload the kernel
+
+In `boards/stm32f412gdiscovery` run:
+
+```bash
+tock@tock-dev:~/tock/tock/boards/stm32f412gdiscovery$ make flash
+# this should output
+   Compiling cortexm v0.1.0 (/home/tock/tock/tock/arch/cortex-m)
+   Compiling capsules v0.1.0 (/home/tock/tock/tock/capsules)
+   Compiling cortexm4 v0.1.0 (/home/tock/tock/tock/arch/cortex-m4)
+warning: expected a clobber, found an option
+   --> arch/cortex-m4/src/lib.rs:491:15
+    |
+491 |             : "volatile" );
+    |               ^^^^^^^^^^
+
+warning: 1 warning emitted
+
+   Compiling components v0.1.0 (/home/tock/tock/tock/boards/components)
+   Compiling stm32f4xx v0.1.0 (/home/tock/tock/tock/chips/stm32f4xx)
+   Compiling stm32f412g v0.1.0 (/home/tock/tock/tock/chips/stm32f412g)
+   Compiling stm32f412gdiscovery v0.1.0 (/home/tock/tock/tock/boards/stm32f412gdiscovery)
+    Finished release [optimized + debuginfo] target(s) in 56.80s
+   text    data     bss     dec     hex filename
+  76289    2000   14384   92673   16a01 /home/tock/tock/tock/target/thumbv7em-none-eabi/release/stm32f412gdiscovery
+  openocd -f openocd.cfg -c "init; reset halt; flash write_image erase /home/tock/tock/tock/target/thumbv7em-none-eabi/release/stm32f412gdiscovery.elf; verify_image /home/tock/tock/tock/target/thumbv7em-none-eabi/release/stm32f412gdiscovery.elf; reset; shutdown"
+  Open On-Chip Debugger 0.10.0+dev-01336-g68611efc-dirty (2020-07-21-14:31)
+  Licensed under GNU GPL v2
+  For bug reports, read
+          http://openocd.org/doc/doxygen/bugs.html
+  DEPRECATED! use 'adapter driver' not 'interface'
+  Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+  Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+  Info : clock speed 2000 kHz
+  Info : STLINK V2J37M26 (API v2) VID:PID 0483:374B
+  Info : Target voltage: 3.249934
+  Info : stm32f4x.cpu: hardware has 6 breakpoints, 4 watchpoints
+  Info : starting gdb server for stm32f4x.cpu on 3333
+  Info : Listening on port 3333 for gdb connections
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  target halted due to debug-request, current mode: Thread 
+  xPSR: 0x01000000 pc: 0xfffffffe msp: 0xfffffffc
+  Info : device id = 0x30006441
+  Info : flash size = 1024 kbytes
+  Info : Flash write discontinued at 0x080131d0, next section at 0x08040000
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  shutdown command invoked
+```
+
+Now you have a running Tock kernel.
+
+---
+class: split-50
+
+## Console
+
+Tock provides a console using the virtual serial port.
+In a new shell, run:
+
+```bash
+tock@tock-dev:~/tock/tock/boards/stm32f412gdiscovery$ tockloader listen
+# this sould output
+[INFO   ] No device name specified. Using default name "tock".
+[INFO   ] No serial port with device name "tock" found.
+[INFO   ] Found 1 serial port.
+[INFO   ] Using "/dev/ttyACM0 - STM32 STLink - ST-Link VCP Ctrl".
+[INFO   ] Listening for serial output.
+```
+
+Press the reset button on the board (the black button).  
+The console will output a message.
+
+```bash
+Initialization complete. Entering main loop
+```
+
+.column[
+Leave this shell open all the time.
+]
+
+.column[
+.card[.small_vertical[.center[![Data Types](../images/sep_tockloader.png)]]]
+]
+
+---
+
+# Workpoint 2 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+In `main.rs`, find the line that prints the start message, and write a message of your own.
+
+```bash
+Initialization complete. Entering main loop
+```
+
+Example
+
+```bash
+Welcome from Tock
+```
+
+.center[.card[.small_vertical[![Data Types](../images/sep_reset_handler.png)]]]
+
+---
+
+# Workpoint 3 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Enable the process console for Tock. Find similar lines in `main.rs` and replace them.  
+Flash the kernel.
+
+```rust
+// Setup the console.
+let console = components::console::ConsoleComponent::new(board_kernel, uart_mux).finalize(());
+// Create the debugger object that handles calls to `debug!()`.
+components::debug_writer::DebugWriterComponent::new(uart_mux).finalize(());
+
+use capsules::virtual_uart::UartDevice;
+use kernel::hil;
+
+// Setup the process inspection console
+let process_console_uart = static_init!(UartDevice, UartDevice::new(uart_mux, true));
+process_console_uart.setup();
+pub struct ProcessConsoleCapability;
+unsafe impl capabilities::ProcessManagementCapability for ProcessConsoleCapability {}
+let process_console = static_init!(
+    capsules::process_console::ProcessConsole<'static, ProcessConsoleCapability>,
+    capsules::process_console::ProcessConsole::new(
+        process_console_uart,
+        &mut capsules::process_console::WRITE_BUF,
+        &mut capsules::process_console::READ_BUF,
+        &mut capsules::process_console::COMMAND_BUF,
+        board_kernel,
+        ProcessConsoleCapability,
+    )
+);
+hil::uart::Transmit::set_transmit_client(process_console_uart, process_console);
+hil::uart::Receive::set_receive_client(process_console_uart, process_console);
+process_console.start();
+```
+
+Use the console.
+
+---
+
+# A few words about C applications
+
+In `/home/tock/libtock-c` you have:
+```bash
++-- libtock-c     # user space
+|   +-- doc             # documentation
+|   +-- examples        # example applications
+|   |   +-- c_hello         # hello world 
+|   |   +-- blink           # LED blink
+|   |   +-- buttons         # bnutton events
+|   |   |   ...  
+|   |   |-- <your app>      # your applications
+|   +-- libc++          # C++ libraries
+|   +-- lua53           # Lua Language library
+|   +-- lvgl            # Little vGL UI library
+|   +-- newlib          # C library
+|   ...
+|   +-- tools           # tools for building
+```
+
+- just copy `c_hello` and start working on the new application
+- the name of an application is its folder name
+
+---
+## Build an application
+
+Open `tock/libtock0c` in VS Code  
+In a shell, run:
+
+```bash
+tock@tock-dev:~/tock/libtock-c$ cd examples/c_hello
+tock@tock-dev:~/tock/libtock-c/examples/c_hello$ make
+# this will output
+  LD        build/cortex-m0/cortex-m0.elf
+  LD        build/cortex-m3/cortex-m3.elf
+  LD        build/cortex-m4/cortex-m4.elf
+Application size report for target cortex-m0:
+   text    data     bss     dec     hex filename
+    528     200    2396    3124     c34 build/cortex-m0/cortex-m0.elf
+Application size report for target cortex-m3:
+   text    data     bss     dec     hex filename
+    520     200    2396    3116     c2c build/cortex-m3/cortex-m3.elf
+Application size report for target cortex-m4:
+   text    data     bss     dec     hex filename
+    520     200    2396    3116     c2c build/cortex-m4/cortex-m4.elf
+```
+
+It compiles the applications for ARM-Cortex M0, M3 and M4  
+For RISC-V, run the same command like `make RISCV=1`
+
+---
+
+## Upload an Application
+
+.title[![tockloader flash](../images/flash.svg)]
+
+We will use __openocd__ as tockloader is not yet available for STM32
+
+---
+
+## Makefile
+
+We have to instruct make to upload the kernel+applications using `openocd`
+
+Edit `boards/stm32f412gdiscovery/Makefile`: (details in `Readme.md`)
+
+```makefile
+# Makefile for building the tock kernel for the stm32412gdiscovery platform
+#
+TARGET=thumbv7em-none-eabi
+PLATFORM=stm32f412gdiscovery
+
+include ../Makefile.common
+
+# these lines define the app that you want to run
+APP=../../../libtock-c/examples/c_hello/build/cortex-m4/cortex-m4.tbf
+KERNEL=$(TOCK_ROOT_DIRECTORY)/target/$(TARGET)/debug/$(PLATFORM).elf
+KERNEL_WITH_APP=$(TOCK_ROOT_DIRECTORY)/target/$(TARGET)/debug/$(PLATFORM)-app.elf
+
+OPENOCD=openocd
+OPENOCD_OPTIONS=-f openocd.cfg
+
+.PHONY: flash-debug
+flash-debug: $(TOCK_ROOT_DIRECTORY)target/$(TARGET)/debug/$(PLATFORM).elf
+	$(OPENOCD) $(OPENOCD_OPTIONS) -c "init; reset halt; flash write_image erase $<; verify_image $<; reset; shutdown"
+
+.PHONY: flash
+flash: $(TOCK_ROOT_DIRECTORY)target/$(TARGET)/release/$(PLATFORM).elf
+	$(OPENOCD) $(OPENOCD_OPTIONS) -c "init; reset halt; flash write_image erase $<; verify_image $<; reset; shutdown"
+
+.PHONY: program
+# these lines are modified
+program: $(TOCK_ROOT_DIRECTORY)target/$(TARGET)/debug/$(PLATFORM).elf
+	arm-none-eabi-objcopy --update-section .apps=$(APP) $(KERNEL) $(KERNEL_WITH_APP) 
+	$(OPENOCD) $(OPENOCD_OPTIONS) -c "init; reset halt; flash write_image erase $(KERNEL_WITH_APP); verify_image $(KERNEL_WITH_APP); reset; shutdown"
+```
+
+Make sure that both lines after the `program:` label have __exactly two tabs__
+
+---
+
+## Upload kernel+applications
+
+Run 
+```bash
+tock@tock-dev:~/tock/tock/boards/stm32f412gdiscovery$ make program
+# this will output
+  ...
+  arm-none-eabi-objcopy --update-section .apps=../../../libtock-c/examples/c_hello/build/cortex-m4/cortex-m4.tbf /home/tock/tock/tock//target/thumbv7em-none-eabi/debug/stm32f412gdiscovery.elf /home/tock/tock/tock//target/thumbv7em-none-eabi/debug/stm32f412gdiscovery-app.elf 
+  openocd -f openocd.cfg -c "init; reset halt; flash write_image erase /home/tock/tock/tock//target/thumbv7em-none-eabi/debug/stm32f412gdiscovery-app.elf; verify_image /home/tock/tock/tock//target/thumbv7em-none-eabi/debug/stm32f412gdiscovery-app.elf; reset; shutdown"
+  Open On-Chip Debugger 0.10.0+dev-01336-g68611efc-dirty (2020-07-21-14:31)
+  Licensed under GNU GPL v2
+  For bug reports, read
+          http://openocd.org/doc/doxygen/bugs.html
+  DEPRECATED! use 'adapter driver' not 'interface'
+  Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+  Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+  Info : clock speed 2000 kHz
+  Info : STLINK V2J37M26 (API v2) VID:PID 0483:374B
+  Info : Target voltage: 3.248358
+  Info : stm32f4x.cpu: hardware has 6 breakpoints, 4 watchpoints
+  Info : starting gdb server for stm32f4x.cpu on 3333
+  Info : Listening on port 3333 for gdb connections
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  target halted due to debug-request, current mode: Thread 
+  xPSR: 0x01000000 pc: 0x080002e0 msp: 0x20001000
+  Info : device id = 0x30006441
+  Info : flash size = 1024 kbytes
+  Info : Flash write discontinued at 0x0801a5f4, next section at 0x08040000
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+  shutdown command invoked
+```
+
+In the __tockloader shell__ (console), it should print `Hello World!`
+
+---
+
+# Workpoint 4 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Write and upload a new application that writes a message to the console using `printf`.
+
+```c
+#include <stdio.h>
+
+int main (void)
+{
+    printf ("Application Message\n");
+    return 0;
+}
+```
+
+Hint: You can start by copying one of the existing applications.
+
+---
+
+# Workpoint 5 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+1. Run the `blink` application
+
+2. Change the `blink` application so that:
+    - it prints to the console the number of available LEDs
+    - it lights up one LED at a time
+
+3. Change the `button` application so that:
+    - it prints the number of buttons available
+    - it prints the name of the button (joystick direction) that was pressed
+
+Hint: use `printf` to write to the console (just as you would use it normally)
+
+---
+class: split-30
+
+# Arduino Shield
+
+.column[
+.small[.title[![Arduino Shield](../images/sensor_shield.png)]]
+
+- 3 Buttons
+- 4 LEDs
+- Buzzer
+- 7 Segment Display
+- Potentiometer
+]
+
+.column[
+.card[.large_vertical[.center[![Arduino](../images/sep_arduino.png)]]]
+.card[.large_vertical[.center[![Arduino](../images/sep_shield.png)]]]
+]
+
+---
+
+# Workpoint 6 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Add the LEDs from the Arduino Shield to Tock. Upload blink.
+
+```rust
+let led = components::led::LedsComponent::new(components::led_component_helper!(
+        stm32f412g::gpio::Pin,
+        (
+            stm32f412g::gpio::PinId::PE00.get_pin().as_ref().unwrap(),
+            kernel::hil::gpio::ActivationMode::ActiveLow
+        ),
+        (
+            stm32f412g::gpio::PinId::PE01.get_pin().as_ref().unwrap(),
+            kernel::hil::gpio::ActivationMode::ActiveLow
+        ),
+        (
+            stm32f412g::gpio::PinId::PE02.get_pin().as_ref().unwrap(),
+            kernel::hil::gpio::ActivationMode::ActiveLow
+        ),
+        (
+            stm32f412g::gpio::PinId::PE03.get_pin().as_ref().unwrap(),
+            kernel::hil::gpio::ActivationMode::ActiveLow
+        )
+    ))
+    .finalize(components::led_component_buf!(stm32f412g::gpio::Pin));
+```
+
+LEDs are defined in `main.rs` similar to the source above. Use the cards to identify the board's Pins.
+
+---
+# Workpoint 7 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Write and upload an application that uses the LEDs with the GPIO API. 
+
+```c
+// GPIO pins exposed to userspace are defined in platform definitions. The index
+// of each pin in the array corresponds to the value of GPIO_Pin_t in userspace.
+// For example, on imix board, pin8's GPIO_Pin_t value is 6.
+typedef uint32_t GPIO_Pin_t;
+
+typedef enum {
+  PullNone=0,
+  PullUp,
+  PullDown,
+} GPIO_InputMode_t;
+
+typedef enum {
+  Change=0,
+  RisingEdge,
+  FallingEdge,
+} GPIO_InterruptMode_t;
+
+// Returns the number of GPIO pins configured on the board.
+int gpio_count(void);
+
+int gpio_enable_output(GPIO_Pin_t pin);
+int gpio_set(GPIO_Pin_t pin);
+int gpio_clear(GPIO_Pin_t pin);
+int gpio_toggle(GPIO_Pin_t pin);
+int gpio_enable_input(GPIO_Pin_t pin, GPIO_InputMode_t pin_config);
+int gpio_read(GPIO_Pin_t pin);
+int gpio_enable_interrupt(GPIO_Pin_t pin, GPIO_InterruptMode_t irq_config);
+int gpio_disable_interrupt(GPIO_Pin_t pin);
+int gpio_disable(GPIO_Pin_t pin);
+int gpio_interrupt_callback(subscribe_cb callback, void* callback_args);
+```
+
+Hint: In `main.rs`, move the LEDs from the Shield to the GPIO definitions.
+
+---
+# Workpoint 8 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Write and upload an application that displays numbers on the 7 segment.
+
+```c
+// pin numbers might be different
+#define LATCH_DIO 4
+#define CLK_DIO 7
+#define DATA_DIO 8
+
+// similar to the shiftOut function
+void shift_out (GPIO_Pin_t data, GPIO_Pin_t clock, unsigned char value) {
+    gpio_enable_output (data);
+    gpio_enable_output (clock);
+    for (int i = 7; i >= 0; i--) {
+      if (((value >> i) & 0x01) == 1) {
+        gpio_set (data);
+      }
+      else
+      {
+        gpio_clear (data);
+      }
+      gpio_set (clock);
+      gpio_clear (clock);
+    }
+}
+
+/* Segment byte maps for numbers 0 to 9 */
+const byte SEGMENT_MAP[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0X80,0X90};
+/* Byte maps to select digit 1 to 4 */
+const byte SEGMENT_SELECT[] = {0xF1,0xF2,0xF4,0xF8};
+
+void setup ()
+{
+  /* Set DIO pins to outputs */
+  pinMode(LATCH_DIO,OUTPUT);
+  pinMode(CLK_DIO,OUTPUT);
+  pinMode(DATA_DIO,OUTPUT);
+}
+
+/* Main program */
+void loop()
+{
+/* Update the display with the current counter value */
+  WriteNumberToSegment(0 , 0);
+  WriteNumberToSegment(1 , 1);
+  WriteNumberToSegment(2 , 2);
+  WriteNumberToSegment(3 , 3);
+}
+
+/* Write a decimal number between 0 and 9 to one of the 4 digits of the display */
+void WriteNumberToSegment(byte Segment, byte Value)
+{
+  digitalWrite(LATCH_DIO,LOW);
+  shiftOut(DATA_DIO, CLK_DIO, MSBFIRST, SEGMENT_MAP[Value]);
+  shiftOut(DATA_DIO, CLK_DIO, MSBFIRST, SEGMENT_SELECT[Segment] );
+  digitalWrite(LATCH_DIO,HIGH);
+}
+```
+
+Hint: Identify the board's GPIOs that are connected to the [Shift Register](https://www.arduino.cc/en/tutorial/ShiftOut).
+Take a peek at the [Shield's tutoriual](https://www.electroschematics.com/getting-started-with-the-arduino-multifunction-shield/).
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../script/playground.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+		navigation: {
+				scroll: false
+			}
+    });
+    window.cPlaygroundUrl = "https://cplayground.com/";
+    window.playgroundUrl = "https://play.rust-lang.org/";
+    </script>
+  </body>
+</html>
