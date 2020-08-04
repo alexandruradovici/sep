@@ -585,7 +585,7 @@ if x > 0 {
     println! ("negative");
 }
 ```
-- No parens necessary.
+- No parentheses necessary.
 - Entire if statement evaluates to one expression, so every arm must end with
   an expression of the same type.
     - In this example is it unit `()`:
@@ -1298,8 +1298,8 @@ impl Person {
 }
 
 fn main () {
-  let p = Person::new ("The", "Name", 9);
-  p.set_firstname ("New");
+  let p = Person::new ("The".to_string(), String::from("Name"), 9);
+  p.set_firstname ("New".to_string());
   println! ("{} {} is now {}", p.firstname, p.lastname, p.age);
 }
 ```
@@ -1356,14 +1356,12 @@ struct Professor {
   firstname: String,
   lastname: String,
   age: usize,
-  // add subjects
 }
 
 struct Student {
   firstname: String,
   lastname: String,
   age: usize,
-  // add classes
 }
 
 trait Person {
@@ -1373,14 +1371,14 @@ trait Person {
 
 fn main () {
   // make a student
-  let p = Professor::new ("John", "Doe", 20);
-  let s = Student::new ("Johnny", "Doe", 50);
+  let p = Professor::new (String::from("John"), String::from("Doe"), 20);
+  let s = Student::new ("Johnny".to_string(), "Doe".to_string(), 50);
   // make a professor
   println! ("{:?}", p);
   println! ("{:?}", s);
 
-  println! ("{} is a {}", p.get_name (), p.job());
-  println! ("{} is a {}", s.get_name (), s.job());
+  println! ("{} is a {}", p.get_name (), p.get_job());
+  println! ("{} is a {}", s.get_name (), s.get_job());
 }
 ```
 
@@ -1419,7 +1417,7 @@ fn main () {
     println! ("The numbers {} and {} are {}", n1, n2, if n1==n2 { "equal"} else {"not equal"});
 }
 ```
-  - Hint: use the Add, Sub, Mul, Div and PartialEq traits. 
+  - Hint: use the Display, Add, Sub, Mul, Div and PartialEq traits. 
   - Read the compiler hints carefully.
 
     </textarea>
