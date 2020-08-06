@@ -48,6 +48,10 @@
       width: 600px;
     }
 
+    .splash_vertical img {
+      height: 500px;
+    }
+
     .title img {
         width: 550px;
       }
