@@ -69,7 +69,7 @@ tock@tock-dev:~/tock/tock$ pip3 uninstall tockloader
 # close and reopen the shell
 tock@tock-dev:~/tock/tock$ git clone https://github.com/tock/tockloader.git
 tock@tock-dev:~/tock/tock$ cd tockloader
-tock@tock-dev:~/tock/tock$ python3 setup.py install
+tock@tock-dev:~/tock/tock$ sudo python3 setup.py install
 ```
 
 Connect the board and run:
@@ -514,8 +514,8 @@ Enable the system calls trace in `kernel/src/config.rs`.
 
 Kernel
 
-1. Write the `Hello` and its implementatiom
-2. Impelement the `Driver` trait for `Hello`
+1. Write the `Hello` and its implementation
+2. Implement the `Driver` trait for `Hello`
   - all methiods have default implementation
 3. Add the driver to the board structure in `main.rs`
 
@@ -526,7 +526,7 @@ User space
 ---
 ### Kernel
 
-Write the driver and implement the`Driver` trait (1 and 2).
+Write the driver and implement the `Driver` trait (1 and 2).
 
 Write a file `hello.rs` in the same folder as `main.rs`.
 
@@ -716,7 +716,7 @@ Write and upload an app that userspac the driver.
 ---
 ## Workpoint 6 .top_image[![Work In Progress](../images/work_in_progress.png)]
 
-Add command_number 2 that will increment a counter and return it to the app.
+Add `command_num` 2 that will increment a counter and return it to the app.
   Hint: use `ReturnCode::SuccessWithValue { value: ... }`
 
 Each time the app calls the system call, the driver will will return an incremented number.
@@ -731,7 +731,7 @@ int nr;
 int main(void) {
     while (true) {
         nr = hello_counter ();
-        printf ("Counter %d\n", i);
+        printf ("Counter %d\n", n);
         delay_ms (1000);
     }
 }
@@ -932,8 +932,8 @@ pub unsafe fn reset_handler() {
 | Command Num | Parameters | Description |
 |-------------|------------|-------------|
 | 0 | N/A | Returns 0 if the driver is available |
-| 1 | on | the display turns on and display the number |
-| 2 | off | the display turns off and does not display anything |
+| 1 | N/A | Turn om the display turns on and display the memorised number at the memorised position |
+| 2 | N/A | Turn off the display turns off and do not display anything |
 | 3 | data1: digit (0-9)<br>data2: position (0-3) | set the number to display |
 | 4 | N/A | get the displayed number |
 | 5 | N/A | get the position |
