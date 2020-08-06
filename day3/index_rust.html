@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Embedded Programming - Day 1</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../style/style.css"></link>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Secure Embedded Programming
+
+.title[.center[![SecureEmbeddedProgramming](../images/sep.png)]]
+
+.left[
+Based on: [Rust ISP 2019](https://github.com/newpavlov/rust-isp-2019) slides  
+Alexandru Radovici, ilustrations by [Mieuneli](http://miau.laura.ro)
+]
+
+---
+
+# Day 3
+
+1. Workpoint review
+
+1. References
+2. Ownership & Borrow
+. Lifetimes
+
+---
+# Deriving
+
+- Many traits are so straightforward that the compiler can often implement them
+  for you.
+- A `#[derive(...)]` attribute tells the compiler to insert a default
+  implementation for whatever traits you tell it to.
+- This removes the tedium of repeatedly manually implementing traits like `Clone` yourself!
+
+```rust
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+struct Complex {
+    r: f64,
+    i: f64
+}
+```
+
+---
+## Derivable Traits
+
+- You can derive the following core traits:
+    - `Clone`, `Copy`, `Debug`, `Default`, `Eq`,
+    - `Hash`, `Ord`, `PartialEq`, `PartialOrd`.
+- Deriving custom traits is also supported! (e.g. see [`serde`](https://serde.rs/) and [`diesel`](http://diesel.rs/))
+- Careful: deriving a trait won't always work.
+    - Can only derive a trait on a data type when all of its members can have derived the trait.
+    - e.g., `Eq` can't be derived on a struct containing only `f32`s, since
+      `f32` is not `Eq`.
+
+---
+## Core traits
+
+- It's good to be familiar with the core traits.
+    - `Clone`, `Copy`
+    - `Debug`
+    - `Default`
+    - `Eq`, `PartialEq`
+    - `Hash`
+    - `Ord`, `PartialOrd`
+
+---
+### Clone
+
+```rust
+pub trait Clone: Sized {
+    fn clone(&self) -> Self;
+
+    fn clone_from(&mut self, source: &Self) { ... }
+}
+```
+- A trait which defines how to duplicate a value of type `T`.
+- This can solve ownership problems.
+    - You can clone an object rather than taking ownership or borrowing!
+- [Documentation](https://doc.rust-lang.org/std/clone/trait.Clone.html)
+
+---
+### Clone
+
+```rust
+#[derive(Clone)] // without this, Bar cannot derive Clone.
+struct Foo {
+    x: i32,
+}
+
+#[derive(Clone)]
+struct Bar {
+    x: Foo,
+}
+```
+
+---
+### Copy
+```rust
+pub trait Copy: Clone { }
+```
+- `Copy` denotes that a type has "copy semantics" instead of "move semantics."
+- Type must be able to be copied by copying bits (`memcpy`).
+    - Types that contain references _cannot_ be `Copy`.
+- Marker trait: does not implement any methods, but defines behavior instead.
+- [Documentation](https://doc.rust-lang.org/std/marker/trait.Copy.html)
+
+---
+### Debug
+
+```rust
+pub trait Debug {
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+```
+
+- Defines output for the `{:?}` formatting option.
+- Generates debug output, not pretty printed.
+- Generally speaking, you should always derive this trait.
+
+```rust
+#[derive(Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+let origin = Point { x: 0, y: 0 };
+println!("The origin is: {:?}", origin);
+// The origin is: Point { x: 0, y: 0 }
+```
+- [Documentation](https://doc.rust-lang.org/std/fmt/trait.Debug.html)
+
+---
+### Default
+
+```rust
+pub trait Default: Sized {
+    fn default() -> Self;
+}
+```
+- Defines a default value for a type.
+- Often can be derived, but sometimes it has to be implemented explicitly.
+- [Documentation](https://doc.rust-lang.org/std/default/trait.Default.html)
+
+---
+### Eq vs. PartialEq
+
+```rust
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+
+    // example of default trait method implementation
+    fn ne(&self, other: &Rhs) -> bool { 
+        !self.eq (other)
+    }
+}
+
+pub trait Eq: PartialEq<Self> {}
+```
+- Traits for defining equality via the `==` operator.
+
+---
+### Eq vs. PartialEq
+
+- `PartialEq` represents a _partial equivalence relation_.
+    - Symmetric: if a == b then b == a
+    - Transitive: if a == b and b == c then a == c
+- `ne` has a default implementation in terms of `eq`.
+- `Eq` represents a _total equivalence relation_.
+    - Symmetric: if a == b then b == a
+    - Transitive: if a == b and b == c then a == c
+    - **Reflexive: a == a**
+- `Eq` does not define any additional methods.
+    - (It is also a Marker trait.)
+- For example, in floating point numbers `NaN != NaN`,
+    so floating point types implement `PartialEq` but not `Eq`.
+
+---
+### Ord vs. PartialOrd
+
+```rust
+pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+    // Ordering is one of Less, Equal, Greater
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+
+    fn lt(&self, other: &Rhs) -> bool { ... }
+    fn le(&self, other: &Rhs) -> bool { ... }
+    fn gt(&self, other: &Rhs) -> bool { ... }
+    fn ge(&self, other: &Rhs) -> bool { ... }
+}
+```
+- Traits for values that can be compared for a sort-order.
+
+---
+### Ord vs. PartialOrd
+
+- The comparison must satisfy, for all `a`, `b` and `c`:
+  - Antisymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
+  - Transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+- `lt`, `le`, `gt`, `ge` have default implementations based on `partial_cmp`.
+
+---
+### Ord vs. PartialOrd
+
+```rust
+pub trait Ord: Eq + PartialOrd<Self> {
+    fn cmp(&self, other: &Self) -> Ordering;
+}
+```
+- Trait for types that form a total order.
+- An order is a total order if it is (for all `a`, `b` and `c`):
+  - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
+  - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+- For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 == false` (cf. IEEE 754-2008 section 5.11).
+- See `std::cmp` [documentation](https://doc.rust-lang.org/std/cmp/index.html) for more information.
+
+---
+### Hash
+
+```rust
+pub trait Hash {
+    fn hash<H: Hasher>(&self, state: &mut H);
+
+    fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
+        where Self: Sized { ... }
+}
+```
+- A hashable type.
+- The `H` type parameter is an abstract hash state used to compute the hash.
+- If you also implement `Eq`, there is an additional, important property:
+```rust
+k1 == k2 -> hash(k1) == hash(k2)
+```
+- [Documentation](https://doc.rust-lang.org/std/hash/trait.Hash.html)
+
+---
+
+# Workpoint 1 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Find a way to order these numbers and make the source work.
+```rust
+struct Complex {
+    r: f64,
+    i: f64
+}
+
+fn main () {
+    let n1 = Complex::new (2, 3);
+    let n2 = Complex::new (-2, 3);
+
+    println! ("The number is {}", n1); // prints 2+3i
+    println! ("The number is {}", n2); // prints -2+3i
+
+    println! ("The number is {}", n1<n2);
+    println! ("The number is {}", n1<=n2); 
+    println! ("The number is {}", n1>n2);
+    println! ("The number is {}", n1>=n2);
+}
+```
+
+Use the homework.
+
+---
+
+## References 
+
+- Reference *types* are written with an `&`: `&i32`.
+- References can be taken with `&` (like C/C++).
+- References can be _dereferenced_ with `*` (like C/C++).
+- References are guaranteed to be valid.
+    - Validity is enforced through compile-time checks!
+- These are *not* the same as pointers!
+- Reference lifetimes are pretty complex, as we'll explore later.
+
+```rust
+let x = 12;
+let ref_x = &x;
+println!("{}", *ref_x); // 12
+```
+
+---
+
+---
+# Ownership & Borrowing
+
+- Explicit ownership is the biggest new feature that Rust brings to the table!
+- Ownership is all (well, mostly) checked at compile time!
+- Newcomers to Rust often find themselves "fighting with the borrow checker"
+   trying to get their code to compile
+- The ownership model is the biggest thing that Rust brings to the table, its
+  claim to fame.
+- Ownership is something that's checked at compile time and has as little
+  runtime cost as possible.
+- So it's zero (or very little) runtime cost, but you pay for it with a longer
+  compilation time and learning curve. Which is where the phrase "fighitng with
+  the borrow checker" comes from, when you have to work around the compiler's
+  restrictions to figure out how to do what you want.
+
+---
+## Ownership
+
+- A variable binding _takes ownership_ of its data.
+    - A piece of data can only have one owner at a time.
+- When a binding goes out of scope, the bound data is released automatically. (`Drop` trait)
+    - For heap-allocated data, this means de-allocation.
+- Data _must be guaranteed_ to outlive its references.
+
+```rust
+fn foo() {
+    // Creates a String
+    // Gives ownership of the String object to s
+    let s = String::new ("This text is owned by s");
+
+    // At the end of the scope, s goes out of scope.
+    // s still owns the String object, so it can be cleaned up.
+}
+```
+
+---
+## Ownership
+
+So here are the basics.
+- When you introduce a variable binding, it takes ownership of its data. And a
+  piece of data can only have one owner at a time.
+- When a variable binding goes out of scope, nothing has access to the data
+  anymore, so it can be released. Which means, if it's on the heap, it can be
+  de-allocated.
+- And data must be guaranteed to outlive its references. Or, all references are
+  guaranteed to be valid.
+
+---
+## Move Semantics
+
+```rust
+let s1 = String::from ("A string");
+
+// Ownership of the String object moves to s2.
+let s2 = s1;
+
+println!("{}", s1); // error: use of moved value `s`
+```
+
+- `let s2 = s1;`
+    - We don't want to copy the data, since that's expensive.
+    - The data cannot have multiple owners.
+    - Solution: move the String's ownership into `s2`, and declare `s1` invalid.
+- `println!("{}", s1);`
+    - We know that `s1` is no longer a valid variable binding, so this is an error.
+- Rust can reason about this at compile time, so it throws a compiler error.
+
+---
+## Move Semantics
+
+- Moving ownership copies data. BUT:
+    - Often moves are optimized out by compiler.
+    - When we move ownership of a heap allocated data (e.g. `String`), we do
+        not touch data on heap, just few bytes allocated on stack are copied
+        (pointer to heap, length and capacity; 24 bytes on 64-bit machine)
+- Moves are automatic (via assignments); no need to use something like C++'s
+  `std::move`.
+    - However, there are functions like `std::mem::replace` in Rust to provide
+      advanced ownership management.
+- For more finer-grained control see standrard library functions:
+`std::mem::replace`, `std::mem::swap` and others.
+
+---
+## Ownership
+
+- Ownership does not always have to be moved.
+- What would happen if it did? Rust would get very tedious to write:
+
+```rust
+fn string_length(s: String) -> String {
+    // Do whatever here,
+    // then return ownership of `s` back to the caller
+}
+```
+- You could imagine that this does not scale well either.
+    - The more variables you had to hand back, the longer your return type would be!
+    - Imagine having to pass ownership around for 5+ variables at a time :(
+
+---
+## Borrowing
+
+- Instead of transferring ownership, we can _borrow_ data.
+- A variable's data can be borrowed by taking a reference to the variable;
+  ownership doesn't change.
+    - When a reference goes out of scope, the borrow is over.
+    - The original variable retains ownership throughout.
+
+```rust
+let s = String::from ("string");
+
+// s_ref is a reference to s.
+let s_ref = &s;
+
+// use s_ref to access the data in the String s.
+assert_eq!(s.chars().nth(1), s_ref.chars().nth(1));
+```
+
+Rust does automatic dereferencing.
+
+---
+## Borrowing
+
+- Caveat: this adds restrictions to the original variable.
+- Ownership cannot be transferred from a variable while references to it exist.
+    - That would invalidate the reference.
+
+```rust
+let s = String::from("for borrow");
+
+// s_ref is a reference to s.
+let s_ref = &s;
+
+// Moving ownership to s_new would invalidate s_ref.
+// error: cannot move out of `s` because it is borrowed
+let s_new = s;
+
+println! ("{}", s_ref);
+```
+
+Try it without the `println!`
+
+---
+## Borrowing
+
+```rust
+/// `length` only needs `String` temporarily, so it is borrowed.
+fn length(str_ref: &String) -> usize {
+    // vec_ref is auto-dereferenced when you call methods on it.
+    str_ref.len()
+    // you can also explicitly dereference.
+    // (*str_ref).len()
+}
+
+fn main() {
+    let s = String::new ();
+    length(&s);
+    println!("{:?}", s); // this is fine
+}
+```
+- Note the type of `length`: `str_ref` is passed by reference, so it's now an `&String`.
+- References, like bindings, are *immutable* by default.
+- The borrow is over after the reference goes out of scope (at the end of `length`).
+
+---
+## Borrowing
+
+```rust
+/// `push` needs to modify `string` so it is borrowed mutably.
+fn push(str_ref: &mut String, x: &str) {
+    str_ref.push_str (x);
+}
+
+fn main() {
+    let mut s: String = String::from ("");
+    let string_ref: &mut String = &mut s;
+    push(string_ref, "str");
+    assert_eq!(string_ref, "str");
+}
+```
+- Variables can be borrowed by _mutable_ reference: `&mut string_ref`.
+    - `string_ref` is a reference to a mutable `String`.
+    - The type is `&mut String`, not `&String`.
+- Different from a reference which is variable.
+
+---
+## Borrowing
+
+```rust
+/// `push` needs to modify `string` so it is borrowed mutably.
+fn push2(str_ref: &mut String, x: &str) {
+    // error: cannot move out of borrowed content.
+    let string = *str_ref;
+    string.push_str(x);
+}
+
+fn main() {
+    let mut vector = String::from ("");
+    push2(&mut string, "a new str");
+}
+```
+- Error! You can't dereference `string_ref` into a variable binding because that
+  would change the ownership of the data.
+
+---
+## Borrowing
+
+- Rust will auto-dereference variables...
+    - When making method calls on a reference.
+    - When passing a reference as a function argument.
+
+```rust
+/// `length` only needs `vector` temporarily, so it is borrowed.
+fn length(vec_ref: &&Vec<i32>) -> usize {
+    // vec_ref is auto-dereferenced when you call methods on it.
+    vec_ref.len()
+}
+
+fn main() {
+    let vector = vec![];
+    length(&&&&&&&&&&&&vector);
+}
+```
+
+---
+## Borrowing
+
+- You will have to dereference variables...
+    - When writing into them.
+    - And other times that usage may be ambiguous.
+
+```rust
+let mut a = 5;
+let ref_a = &mut a;
+*ref_a = 4;
+println!("{}", *ref_a + 4);
+// ==> 8
+```
+
+---
+## `Copy` Types
+
+- Rust defines a trait&sup1; named `Copy` that signifies that a type may be
+    copied instead whenever it would be moved.
+- Most primitive types are `Copy` (`i32`, `f64`, `char`, `bool`, etc.)
+- Types that contain references may not be `Copy` (e.g. `Vec`, `String`).
+```rust
+let x: i32 = 12;
+let y = x; // `i32` is `Copy`, so it's not moved :D
+println!("x still works: {}, and so does y: {}", x, y);
+```
+
+&sup1; Like a Java/Go interface or Haskell typeclass
+
+
+---
+## Borrowing Rules
+##### _The Holy Grail of Rust_
+Learn these rules, and they will serve you well.
+
+- You can't keep borrowing something after it stops existing.
+- One object may have many immutable references to it (`&T`).
+- **OR** _exactly one_ mutable reference (`&mut T`) (not both).
+- That's it!
+
+.card[.small[.center[![Borrow Rules](../images/sep_borrow_rules.png)]]]
+
+---
+### Borrowing Prevents...
+
+- Iterator invalidation due to mutating a collection you're iterating over.
+- This pattern can be written in C, C++, Java, Python, Javascript...
+    - But may result in, e.g, `ConcurrentModificationException` (at runtime!)
+
+```rust
+let mut vs = [1,2,3,4];
+for v in &vs {
+    vs[1] = 3;
+    println! ("{}", v);
+    // ERROR: cannot borrow `vs` as mutable because
+    // it is also borrowed as immutable
+}
+```
+
+- `pop` needs to borrow `vs` as mutable in order to modify the data.
+- But `vs` is being borrowed as immutable by the loop!
+
+---
+### Borrowing Prevents...
+
+- Use-after-free
+- Valid in C, C++...
+
+```rust
+let y: &i32;
+{
+    let x = 5;
+    y = &x; // error: `x` does not live long enough
+}
+println!("{}", *y);
+```
+
+- The full error message:
+
+```
+error: `x` does not live long enough
+note: reference must be valid for the block suffix following statement
+    0 at 1:16
+...but borrowed value is only valid for the block suffix
+    following statement 0 at 4:18
+```
+
+- This eliminates a _huge_ number of memory safety bugs _at compile time_.
+- As a side note, this technique of creating a block to limit the scope of a
+variable (in this case x) is pretty useful.
+
+---
+### Borrowing Prevents...
+
+- Data races in multithreaded environments.
+- It checks at compile time if it's safe to share or send a given piece of data.
+- Compiler ensures that programm uses necessary synchronization using various primitives: mutexes, atomics, channels, etc.
+- NB: data races != race condition.
+- Check out TRPL section of ["Fearless Concurrency"](https://doc.rust-lang.org/book/ch16-00-concurrency.html)
+
+---
+## Lifetimes
+
+- Lifetimes generally have a pretty steep learning curve.
+- Don't worry if you don't understand these right away.
+
+.title[.center[![Din Lac in Put](../images/mieuneli_din_lac_in_put.png)]]
+
+---
+## Lifetimes
+
+- Imagine This:
+  1. I acquire a resource.
+  2. I lend you a reference to my resource.
+  3. I decide that I'm done with the resource, so I deallocate it.
+  4. You still hold a reference to the resource, and decide to use it.
+  5. You crash 😿.
+- We've already said that Rust makes this scenario impossible, but glossed over
+    how.
+- We need to prove to the compiler that _step 3_ will never happen before _step 4_.
+
+---
+## Lifetimes
+
+- Ordinarily, references have an implicit lifetime that we don't need to care
+    about:
+```rust
+fn foo(x: &i32) {
+    // ...
+}
+```
+- However, we can explicitly provide one instead:
+```rust
+fn bar<'a>(x: &'a i32) {
+    // ...
+}
+```
+
+- `'a`, pronounced "tick-a" or "the lifetime *a*" is a *named* lifetime
+  parameter.
+    - `<'a>` declares generic parameters, including lifetime parameters.
+    - The type `&'a i32` is a reference to an `i32` that lives at least as
+      long as the lifetime `'a`.
+
+---
+## Multiple Lifetime Parameters
+
+```rust
+fn borrow_x_or_y<'a>(x: &'a str, y: &'a str) -> &'a str;
+```
+
+- In `borrow_x_or_y`, all input/output references all have the same lifetime.
+    - `x` and `y` are borrowed (the reference is alive) as long as the returned
+      reference exists.
+
+```rust
+fn borrow_p<'a, 'b>(p: &'a str, q: &'b str) -> &'a str;
+```
+
+- In `borrow_p`, the output reference has the same lifetime as `p`.
+    - `q` has a separate lifetime with no constrained relationship to `p`.
+    - `p` is borrowed as long as the returned reference exists.
+
+---
+## Lifetimes
+
+- Okay, great, but what does this all mean?
+    - If a reference `R` has a lifetime `'a`, it is _guaranteed_ that it will not
+        outlive the owner of its underlying data (the value at `*R`)
+    - If a reference `R` has a lifetime of `'a`, anything else with the lifetime
+      `'a` is _guaranteed_ to live as long `R`.
+- This will probably become more clear the more you use lifetimes yourself.
+
+---
+## Lifetimes - `struct`s
+
+- Structs (and struct members) can have lifetime parameters.
+
+```rust
+struct Pizza(String);
+struct PizzaSlice<'a> {
+    pizza: &'a Pizza,  // <- references in structs must
+    index: u32,        //    ALWAYS have explicit lifetimes
+}
+
+let p1 = Pizza("salamy".to_string());
+{
+    let s1 = PizzaSlice { pizza: &p1, index: 2 }; // this is okay
+}
+
+let s2;
+{
+    let p2 = Pizza("salamy".to_string());
+    s2 = PizzaSlice { pizza: &p2, index: 2 };
+    // no good - why?
+}
+```
+
+- Currently Rust does not support self-referential structs out-of-box.
+
+---
+## Lifetimes - `struct`s
+
+- Lifetimes can be constrained to "outlive" others.
+    - Same syntax as type constraint: `<'b: 'a>`.
+
+```rust
+struct Pizza(String);
+struct PizzaSlice<'a> { pizza: &'a Pizza, index: u32 }
+struct PizzaConsumer<'a, 'b: 'a> { // says "b outlives a"
+    slice: PizzaSlice<'a>, // <- currently eating this one
+    pizza: &'b Pizza,      // <- so we can get more pizza
+}
+
+fn get_another_slice(c: &mut PizzaConsumer, index: u32) {
+    c.slice = PizzaSlice { pizza: c.pizza, index: index };
+}
+
+let p = Pizza("salamy".to_string());
+{
+    let s = PizzaSlice { pizza: &p, index: 1 };
+    let mut c = PizzaConsumer { slice: s, pizza: &p };
+    get_another_slice(&mut c, 2);
+}
+```
+
+---
+## Lifetimes - `'static`
+
+- There is one reserved, special lifetime, named `'static`.
+- `'static` means that a reference may be kept (and will be valid) for the
+  lifetime of the entire program.
+    - i.e. the data referred to will never go out of scope.
+- All `&str` literals have the `'static` lifetime.
+
+```rust
+let s1: &str = "Hello";
+let s2: &'static str = "World";
+```
+
+---
+### Structured Data With Lifetimes
+
+- Any struct or enum that contains a reference must have an explicit lifetime.
+- Normal lifetime rules otherwise apply.
+
+```rust
+struct Foo<'a, 'b> {
+  v: &'a String,
+  s: &'b str,
+}
+```
+
+---
+### Lifetimes in `impl` Blocks
+
+- Implementing methods on `Foo` struct requires lifetime annotations too!
+- You can read this block as "the implementation using the lifetimes `'a` and
+    `'b` for the struct `Foo` using the lifetimes `'a` and `'b`."
+
+```rust
+impl<'a, 'b> Foo<'a, 'b> {
+  fn new(v: &'a String, s: &'b str) -> Foo<'a, 'b> {
+    Foo {
+      v: v,
+      s: s,
+    }
+  }
+}
+```
+
+---
+## Lifetime ellision rules
+
+
+1. Each elided lifetime in the parameters becomes a distinct lifetime parameter.
+2. If there is exactly one lifetime used in the parameters (elided or not), that lifetime is assigned to all elided output lifetimes.
+3. If the receiver has type &Self or &mut Self, then the lifetime of that reference to Self is assigned to all elided output lifetime parameters.
+
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../script/playground.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+		navigation: {
+				scroll: false
+			}
+    });
+    window.cPlaygroundUrl = "https://cplayground.com/";
+    window.playgroundUrl = "https://play.rust-lang.org/";
+    </script>
+  </body>
+</html>
