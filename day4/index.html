@@ -380,7 +380,7 @@ fn digital_write<P>(p: &P, value: usize)
     }
 }
 
-fn digital_write(p: &impl P, value: usize) {
+fn digital_write(p: &impl Pin, value: usize) {
     if value == 1 {
         p.set();
     } else {
