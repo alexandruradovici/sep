@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Secure Embedded Programming - Day 1</title>
+    <title>Secure Embedded Programming - Day 4</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="../style/style.css"></link>
     <style>
@@ -24,13 +24,18 @@ Alexandru Radovici, ilustrations by [Mieuneli](http://miau.laura.ro)
 
 ---
 
-# Day 3
+# Day 4
 
 1. Workpoint review
+2. Generics
+3. References
+    - Ownership & Borrow
+    - Lifetimes
+4. Grants
+5. Asynchronous Development
 
-1. References
-2. Ownership & Borrow
-. Lifetimes
+---
+# Review
 
 ---
 # Deriving
@@ -288,8 +293,191 @@ println!("{}", *ref_x); // 12
 ```
 
 ---
+# Generics
+
+- This looks a lot like a standard library enum, `Result<T, E>`:
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+- `T` stands in for any generic type, not only `String`s.
+- You can use any CamelCase identifier for generic types.
 
 ---
+## Generic Structs
+
+- Let's take a look at generic versions of several other structs from the last lecture:
+
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+```
+
+---
+## Generic Implementations
+
+- To define implementations for structs & enums with generic types, declare the generics at the
+    beginning of the `impl` block:
+
+```rust
+impl<T> Option<T> {
+    fn is_some(&self) -> bool {
+        match self {
+            Result::Some(_) => true,
+            Result::None => false,
+        }
+    }
+}
+```
+
+---
+## Generic Functions
+
+- You can make a function generic over types as well.
+- `<T, U>` declares the type parameters for `foo`.
+    - `x: T, y: U` uses those type parameters.
+- You can read this as "the function `foo`, for all types `T` and `U`,
+    of two arguments: `x` of type `T` and `y` of type `U`."
+
+```rust
+fn foo<T, U>(x: T, y: U) {
+    // ...
+}
+```
+
+- But we can't do much with `x` and `y`, because we don't know anything
+    about types `T` and `U`
+
+---
+## Generics with Trait Bounds
+
+- Instead of allowing _literally any_ type, you can constrain generic types by
+    _trait bounds_.
+- This gives more power to generic functions & types.
+- Trait bounds can be specified with `T: SomeTrait`, with a `where` clause,
+    or with `impl Trait` in argument position.
+
+```rust
+fn digital_write<P: Pin>(p: &P, value: usize) {
+    if value == 1 {
+        p.set();
+    } else {
+        p.clear ();
+    }
+}
+
+fn digital_write<P>(p: &P, value: usize) 
+        where P: Pin {
+    if value == 1 {
+        p.set();
+    } else {
+        p.clear ();
+    }
+}
+
+fn digital_write(p: &impl P, value: usize) {
+    if value == 1 {
+        p.set();
+    } else {
+        p.clear ();
+    }
+}
+
+```
+
+---
+## Generics with Trait Bounds
+
+- Multiple trait bounds are specified like `T: Clone + Ord`.
+- There's no way (yet) to specify [negative trait bounds](https://internals.rust-lang.org/t/pre-rfc-mutually-exclusive-traits/2126).
+  - e.g. you can't stipulate that a `T` must not be `Clone`.
+
+```rust
+fn digital_write<P: Output>(p: P, value: usize) {
+   if value == 1 {
+       p.set ();
+   } else {
+       p.clear ();
+   }
+}
+```
+
+---
+## Generic Types With Trait Bounds
+
+- You can also define structs with generic types and trait bounds.
+- Be sure to declare all of your generic types in the struct header _and_ the
+  impl block header.
+- Only the impl block header needs to specify trait bounds.
+    - This is useful if you want to have multiple impls for a struct each with
+      different trait bounds
+
+```rust
+struct MyDriver<P: Pin> {
+    pin1: &'static P,
+    pin2: &'static P,
+    // ...
+}
+```
+
+---
+## Generic Types With Trait Bounds
+
+```rust
+impl<P: Pin> Driver for MyDriver<P> {
+   // ...
+}
+```
+
+---
+## Examples: Equality
+
+```rust
+// This is not the trait Rust actually uses for equality
+trait Equals {
+    fn equals(&self, other: &Self) -> bool;
+}
+
+impl<T: Equals, E: Equals> Equals for Result<T, E> {
+    fn equals(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Ok(t1), Ok(t2)) => t1.equals(t2),
+            (Err(e1), Err(e2)) => e1.equals(e2),
+            _ => false
+        }
+    }
+}
+```
+- `Self` is a special type which refers to the type of `self`.
+
+---
+## Inheritance (kinda)
+
+- Some traits may require other traits to be implemented first.
+    - e.g., `Eq` requires that `PartialEq` be implemented, and `Copy` requires `Clone`.
+- Implementing the `Child` trait below requires you to also implement `Parent`.
+
+```rust
+trait Parent {
+    fn foo(&self) {
+        // ...
+    }
+}
+
+trait Child: Parent {
+    fn bar(&self) {
+        self.foo();
+        // ...
+    }
+}
+```
+---
+
 # Ownership & Borrowing
 
 - Explicit ownership is the biggest new feature that Rust brings to the table!
@@ -346,7 +534,7 @@ let s1 = String::from ("A string");
 // Ownership of the String object moves to s2.
 let s2 = s1;
 
-println!("{}", s1); // error: use of moved value `s`
+println!("{}", s1); // error: use of moved value `s1`
 ```
 
 - `let s2 = s1;`
@@ -388,6 +576,12 @@ fn string_length(s: String) -> String {
     - The more variables you had to hand back, the longer your return type would be!
     - Imagine having to pass ownership around for 5+ variables at a time :(
 
+```rust
+fn string_length(s1: String, s2: String, ...) -> (String, String, ...) {
+    // Do whatever here,
+    // then return ownership of `s1`, `s2`, ... back to the caller
+}
+```
 ---
 ## Borrowing
 
@@ -501,15 +695,15 @@ fn main() {
     - When passing a reference as a function argument.
 
 ```rust
-/// `length` only needs `vector` temporarily, so it is borrowed.
-fn length(vec_ref: &&Vec<i32>) -> usize {
-    // vec_ref is auto-dereferenced when you call methods on it.
-    vec_ref.len()
+/// `length` only needs `s` temporarily, so it is borrowed.
+fn length(s_ref: &&String) -> usize {
+    // s_ref is auto-dereferenced when you call methods on it.
+    s_ref.len()
 }
 
 fn main() {
-    let vector = vec![];
-    length(&&&&&&&&&&&&vector);
+    let s = String::from("");
+    length(&&&&&&&&&&&&s);
 }
 ```
 
@@ -638,9 +832,13 @@ variable (in this case x) is pretty useful.
 ---
 ## Lifetimes
 
+- Lifetimes are used only together references
+- All variables have a lifetime (usually hidden from the developer)
+- All references are __have to__ be annotated with a lifetime
 - Ordinarily, references have an implicit lifetime that we don't need to care
     about:
-```rust
+
+    ```rust
 fn foo(x: &i32) {
     // ...
 }
@@ -652,40 +850,231 @@ fn bar<'a>(x: &'a i32) {
 }
 ```
 
-- `'a`, pronounced "tick-a" or "the lifetime *a*" is a *named* lifetime
-  parameter.
-    - `<'a>` declares generic parameters, including lifetime parameters.
-    - The type `&'a i32` is a reference to an `i32` that lives at least as
-      long as the lifetime `'a`.
-
 ---
-## Multiple Lifetime Parameters
+### Why lifetimes are useful?
 
-```rust
-fn borrow_x_or_y<'a>(x: &'a str, y: &'a str) -> &'a str;
+How do you use free?
+
+```c
+// program: bear-salamander-anteater
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+char * without_first_word (char *s) {
+    int pos = 0;
+    for (unsigned int i=0; i < strlen (s); i++) {
+        if (s[i] != ' ') pos = pos + 1;
+        else break;
+    }
+    return &s[pos];
+}
+
+int main ()
+{
+    char * s = strdup ("ana has apples");
+    char *wfw = without_first_word (s);
+    // free (s);
+    printf ("%s\n", wfw);
+    // free (wfw);
+}
+
 ```
 
-- In `borrow_x_or_y`, all input/output references all have the same lifetime.
-    - `x` and `y` are borrowed (the reference is alive) as long as the returned
-      reference exists.
+---
+### Why lifetimes are useful?
 
-```rust
-fn borrow_p<'a, 'b>(p: &'a str, q: &'b str) -> &'a str;
+How do you use free?
+
+```c
+// program: oyster-guanaco-dinosaur
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+char * without_first_word (char *s) {
+    int pos = 0;
+    for (unsigned int i=0; i < strlen (s); i++) {
+        if (s[i] != ' ') pos = pos + 1;
+        else break;
+    }
+    return strdup (&s[pos]);
+}
+
+int main ()
+{
+    char * s = strdup ("ana has apples");
+    char *wfw = without_first_word (s);
+    // free (s);
+    printf ("%s\n", wfw);
+    // free (wfw);
+}
+
 ```
 
-- In `borrow_p`, the output reference has the same lifetime as `p`.
-    - `q` has a separate lifetime with no constrained relationship to `p`.
-    - `p` is borrowed as long as the returned reference exists.
+---
+### Why lifetimes are useful?
+
+How do you use free?
+
+```c
+// program: toad-barracuda-mammoth
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+char * without_first_word (char *s);
+
+int main ()
+{
+    char * s = strdup ("ana has apples");
+    char *wfw = without_first_word (s);
+    // free (s);
+    printf ("%s\n", wfw);
+    // free (wfw);
+}
+
+```
 
 ---
-## Lifetimes
+### This is why lifetimes are useful.
 
-- Okay, great, but what does this all mean?
-    - If a reference `R` has a lifetime `'a`, it is _guaranteed_ that it will not
-        outlive the owner of its underlying data (the value at `*R`)
-    - If a reference `R` has a lifetime of `'a`, anything else with the lifetime
-      `'a` is _guaranteed_ to live as long `R`.
-- This will probably become more clear the more you use lifetimes yourself.
+```rust
+fn without_first_word<'a> (s: &'a str) -> &'a str {
+    let mut pos = 0;
+    for a in s.chars() {
+        if a != ' ' { pos = pos + 1; }
+        else { break; }
+    }
+    &s[pos..]
+}
+
+fn main() {
+    let s = String::from("ana has apples");
+    let wfw = without_first_word (&s);
+    // let t = s; // equivalent of free (s)
+    println! ("{}", wfw);
+}
+```
+
+---
+### Efective Lifetimes 
+
+```rust
+fn without_first_word<'a> (s: &'a str) -> &'a str {
+    let mut pos = 0;
+    for a in s.chars() {
+        if a != ' ' { pos = pos + 1; }
+        else { break; }
+    }
+    &s[pos..]
+}
+
+fn main() {
+    let s = String::from("ana has apples"); // <--- s lifetime ('ls) starts here
+    let wfw = without_first_word (&s);      // <--- wfw lifetime ('lwfw) starts here
+    // let t = s; // equivalent of free (s)    // <--- s lifetime ('ls) ends here, wfw lifetime ('wfw) ends here (due to 'ls)
+                                            //      t lifetime ('ts) starts here
+    println! ("{}", wfw);                   // <--- wfw lifetime ('lwfw) actually ends here
+}                                           // <--- t lifetime ('ts) ends here
+```
+
+---
+### Lifetime annotations
+
+```rust
+fn without_first_word<'a> (s: &'a str) -> &'a str;
+
+fn main() {
+    let s = String::from("ana has apples"); // <--- s lifetime ('ls) starts here
+    let wfw = without_first_word (&s);      // <--- wfw lifetime ('lwfw) starts here
+    // let t = s; // equivalent of free (s)    // <--- s lifetime ('ls) ends here, wfw lifetime ('wfw) ends here (due to 'ls)
+                                            //      t lifetime ('ts) starts here
+    println! ("{}", wfw);                   // <--- wfw lifetime ('lwfw) actually ends here
+}                                           // <--- t lifetime ('ts) ends here
+```
+
+---
+### Multiple Lifetime Parameters
+
+```c
+// program: wolverine-mallard-gull
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+char * smaller (char *s1, char *s2) {
+    if (strlen(s1) > strlen(s2)) return s2;
+    else return s1;
+}
+
+int main () {
+    char *s1 = strdup ("ip");
+    char *s2 = strdup ("workshop");
+    char *small = smaller (s1, s2);
+    // free (s1);
+    // free (s2);
+    printf ("%s\n", small);
+}
+
+```
+
+---
+### Multiple Lifetime Parameters
+
+```rust
+fn smaller <'a> (s1: &'a str, s2: &'a str) -> &'a str {}
+
+fn main() {
+    let s1 = String::from("ip"); 
+    let s2 = String::from("workshop"); 
+    let small = smaller (&s1, &s2);
+    // let t1 = s1; // equivalent of free (s1)
+    // let t2 = s2; // equivalent of free (s2)
+    println! ("{}", small);                  
+}                                          
+```
+
+---
+### Multiple Lifetime Parameters
+
+Why can't we free s2?
+
+```rust
+fn append <'a> (s: &'a mut String, n: &'a str) -> &'a str {
+    s.push_str (n);
+    s
+}
+
+fn main() {
+    let mut s1 = String::from("ip"); 
+    let s2 = String::from(" workshop"); 
+    let title = append (&mut s1, &s2);
+    // let t1 = s1; // equivalent of free (s1)
+    let t2 = s2; // equivalent of free (s2)
+    println! ("{}", title);                  
+}                                          
+```
+---
+### Multiple Lifetime Parameters
+
+Why can't we free s2?
+
+```rust
+fn append <'a, 'b> (s: &'a mut String, n: &'b str) -> &'a str {
+    s.push_str (n);
+    s
+}
+
+fn main() {
+    let mut s1 = String::from("ip"); 
+    let s2 = String::from(" workshop"); 
+    let title = append (&mut s1, &s2);
+    // let t1 = s1; // equivalent of free (s1)
+    let t2 = s2; // equivalent of free (s2)
+    println! ("{}", title);                  
+}                                          
+```
 
 ---
 ## Lifetimes - `struct`s
@@ -786,13 +1175,191 @@ impl<'a, 'b> Foo<'a, 'b> {
 ```
 
 ---
-## Lifetime ellision rules
+## Lifetime Ellision Rules
 
 
-1. Each elided lifetime in the parameters becomes a distinct lifetime parameter.
-2. If there is exactly one lifetime used in the parameters (elided or not), that lifetime is assigned to all elided output lifetimes.
-3. If the receiver has type &Self or &mut Self, then the lifetime of that reference to Self is assigned to all elided output lifetime parameters.
+1. Each __elided lifetime__ in the __parameters__ becomes a __distinct lifetime__ parameter.
 
+2. If there is __exactly one lifetime__ used in the parameters (elided or not), that lifetime is assigned to __all elided output lifetimes__.
+
+3. If the receiver has type __&Self__ or __&mut Self__, then the __lifetime of__ that reference to __Self__ is assigned to __all elided output lifetime__ parameters.
+
+---
+# Grants
+
+- Drivers may not allocate memeory
+- Drivers store data for every app
+- Data is deallocated when the app stops
+
+.card[.large[.center[![Borrow Rules](../images/sep_process_memory.png)]]]
+
+---
+
+## Grants Usage
+
+In `hello.rs`
+```rust
+pub struct AppData {
+    // ...
+}
+
+pub struct Hello {
+    // ...
+    grant: Grant<AppData>
+}
+```
+
+In `main.rs`
+```rust
+#[no_mangle]
+pub unsafe fn reset_handler() {
+    // ...
+    let grant_cap = create_capability!(capabilities::MemoryAllocationCapability);
+    let grant_hello = board_kernel.create_grant(&grant_cap);
+
+    let hello = static_init!(
+        hello::Hello,
+        hello::Hello::new(grant_hello)
+    );
+    // ...
+}
+```
+---
+
+## Using the Grant
+
+```rust
+impl Driver for Hello {
+    fn command(
+        &self,
+        command_num: usize,
+        _data1: usize,
+        _data2: usize,
+        app_id: AppId,
+    ) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            1 => {
+                self.grant.enter (app_id, |app, _| {
+                    // app is of type AppData
+                    // use app. ...
+                    ReturnCode::SUCCESS
+                }).unwrap_or_else (|err| err.into())
+            }
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+```
+
+---
+
+# Workpoint 2 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Modify the counter driver to use a different counter for each app. Load two apps that print the counter at different intervals.
+
+```rust
+impl Driver for Hello {
+    /// subscribe and allow will use the default implementation
+    /// command syscall
+    fn command(&self, command_num: usize, _data1: usize, _data2: usize, _app_id: AppId) -> ReturnCode {
+        match command_num {
+            // command_num 0 is used to verify if the driver exists
+            0 => ReturnCode::SUCCESS,
+            1 => { debug! ("Print Hello"); ReturnCode::SUCCESS }
+            2 => {
+                // use a grant
+                self.nr.set (self.nr.get () + 1);
+                ReturnCode::SuccessWithValue { value: self.nr.get() }
+            }
+            // the command number is not defined
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+```
+
+---
+
+# Asynchronous Development
+
+Like an event loop
+
+- schedule next action
+- wait for events
+- repeat
+
+.right[.card[.small[![Asynchronous](../images/sep_async.png)]]]
+
+---
+
+## How drivers work
+
+.large[.center[![Asynchronous Development](../images/asynchronous.svg)]]
+
+---
+
+## Alarm Example
+
+Write a driver that prints hello every second
+
+```rust
+use kernel::hil::time::{Alarm, AlarmClient, Frequency};
+use kernel::debug;
+use kernel::{AppId, Driver, ReturnCode, Grant};
+
+pub struct Hello<A: 'static + Alarm<'static>> {
+    alarm: &'static A,
+}
+
+impl<A: 'static + Alarm<'static>> Hello<A> {
+    pub fn new(alarm: &'static A) -> Hello<A> {
+        Hello { alarm: alarm }
+    }
+}
+```
+
+---
+
+### Alarm Implementation
+
+Implement `Driver` and `AlarmClient`
+
+```rust
+impl<A: 'static + Alarm<'static>> Driver for Hello<A> {
+    fn command(
+        &self,
+        command_num: usize,
+        _data1: usize,
+        _data2: usize,
+        _app_id: AppId,
+    ) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            1 => {
+                // set an alarm
+                self.alarm.set_alarm(
+                    self.alarm
+                        .now()
+                        .wrapping_add(<A::Frequency>::frequency() / 1000));
+                ReturnCode::SUCCESS
+            }
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+
+impl<A: 'static + Alarm<'static>> AlarmClient for Hello<A> {
+    fn fired(&self) {
+        debug! ("hello");
+        // next alarm
+        self.alarm.set_alarm(
+            self.alarm
+                .now()
+                .wrapping_add(<A::Frequency>::frequency() / 1000));
+    }
+}
+```
 
     </textarea>
     <script src="https://remarkjs.com/downloads/remark-latest.min.js">
