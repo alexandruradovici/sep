@@ -1199,14 +1199,9 @@ impl<'a, 'b> Foo<'a, 'b> {
 
 In `hello.rs`
 ```rust
+#[derive(Default)]
 pub struct AppData {
     // ...
-}
-
-impl Default for AppData {
-    fn default () -> AppData {
-        AppData { ... }
-    }
 }
 
 pub struct Hello {
