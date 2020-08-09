@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Embedded Programming - Day 3</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../style/style.css"></link>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Secure Embedded Programming
+
+.title[.center[![SecureEmbeddedProgramming](../images/sep.png)]]
+
+.left[
+Based on: [Rust ISP 2019](https://github.com/newpavlov/rust-isp-2019) slides  
+Alexandru Radovici, ilustrations by [Mieuneli](http://miau.laura.ro)
+]
+
+---
+
+# Day 5
+
+1. Asynchronous
+2. Alarm
+3. Screen and touch
+
+---
+# Workpoint 1 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Implement a loop in the `hello` driver.
+
+```rust
+/// The driver system calls implementation
+impl Driver for Hello {
+    /// subscribe and allow will use the default implementation
+    /// command syscall
+    fn command(&self, command_num: usize, _data1: usize, _data2: usize, _app_id: AppId) -> ReturnCode {
+        match command_num {
+            // command_num 0 is used to verify if the driver exists
+            0 => ReturnCode::SUCCESS,
+            1 => { debug! ("Print Hello"); ReturnCode::SUCCESS }
+            2 => {
+                // modify number
+                loop {
+                    self.nr.set (self.nr.get () + 1);
+                }
+                ReturnCode::SuccessWithValue { value: self.nr.get() }
+            }
+            // the command number is not defined
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+```
+
+What is the problem with this?
+
+---
+## Tock is asynchronous
+
+- Apps may be preempted
+- Drivers may not be interrupted
+  - no use of delay in drivers 
+
+.center[![Do not disturb](../images/do-not-disturb.jpg)]
+
+---
+# Asynchronous Development
+
+Like an event loop
+
+- schedule next action
+- wait for events
+- repeat
+
+.right[.card[.large[![Asynchronous](../images/sep_async.png)]]]
+
+---
+
+## How drivers work
+
+.large[.center[![Asynchronous Development](../images/asynchronous.svg)]]
+
+---
+
+## Asynchronous HIL
+
+### Actual HIL
+
+You request actions from the peripheral.
+
+```rust
+trait Peripheral {
+    // ...
+    fn set_client (client: &'static dyn PeripheralClient);
+}
+```
+
+### HIL's Client(s)
+
+The peripheral will call this function when the action is done.
+
+```rust
+trait PeripheralClient {
+    fn action_done (&self, /* ... */);
+    // ...
+}
+```
+
+---
+## Asynchronous HIl usage
+
+In a driver, when the user space requests a command:
+  - the driver make s a request to the HIL
+  - returns control to the kernel (so that processes can run)
+  - the driver is eventually notified via the HIL's client
+  - the driver notifies the app
+
+```rust
+impl Driver for TheDriver {
+    fn command(&self, command_num: usize, _data1: usize, _data2: usize, _app_id: AppId) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            1 => self.peripheral.drequest_action () // this usually returns a ReturnCode
+            _ => ReturnCode::ENOSUPPORT
+        }
+    }
+    // ...
+}
+
+impl PeripheralClient for TheDriver {
+    fn action_done (&self) {
+        // ... notify the process
+    }
+}
+```
+
+How do we notify the process?
+
+---
+## Optional Cell
+
+Similar to Cell<Option<T>>, but has some useful functions:
+
+.right[.card[.large_vertical[![OptionalCell](../images/sep_optionalcell.png)]]]
+
+---
+### Subscribe
+
+We use the subscribe mechanism:
+
+```rust
+struct TheDriver {
+    callback: OptionalCell<Callback>
+    // ...
+}
+
+impl Driver for TheDriver {
+    fn subscribe(&self, subscribe_num: usize, callback: Option<Callback>, appid: AppId) -> ReturnCode {
+        match command_num {
+            0 => self.callback.put (callback)
+        }
+    }
+    // ...
+}
+
+impl PeripheralClient for TheDriver {
+    fn action_done (&self, /* ... */) {
+        let data1 = ..., data2 = ..., data3 = ...
+        self.callback.map (|callback| callback.schedule (data1, data2, data3));
+    }
+}
+```
+
+---
+## Subscribe in user space app
+
+In the app, you have to subscribe first:
+
+```c
+static event_from_driver (int data1, int data2, int data3, void *user_data) {
+    // ...
+}
+
+int main ()
+{
+    void *user_data = ... // may be NULL
+    subscribe (THE_DRIVER_NUMBER, 0, event_from_driver, user_data);
+    command (THE_DRIVER_NUMBER, 1, 0, 0);
+    yield ();
+}
+```
+
+---
+# Workpoint 2 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Make the `Hello` driver asynchronous, it returns the counter via a subscribe.
+
+```rust
+/// The driver system calls implementation
+impl Driver for Hello {
+    /// allow will use the default implementation
+    fn subscribe(&self, subscribe_num: usize, callback: Option<Callback>, appid: AppId) -> ReturnCode {
+        match command_num {
+            0 => // set the callback
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+    /// command syscall
+    fn command(&self, command_num: usize, _data1: usize, _data2: usize, _app_id: AppId) -> ReturnCode {
+        match command_num {
+            // command_num 0 is used to verify if the driver exists
+            0 => ReturnCode::SUCCESS,
+            1 => { debug! ("Print Hello"); ReturnCode::SUCCESS }
+            2 => {
+                // modify number
+                self.nr.set (self.nr.get () + 1);
+                // schedule the callback
+                ReturnCode::SUCCESS
+            }
+            // the command number is not defined
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+```
+
+---
+class: split-50
+# System Call Pattern
+
+.column[
+1. Allow a buffer
+2. Subscribe
+3. Send a Command
+4. Yield
+5. Verify if your callback was called
+  - yes, continue
+  - no, yield again
+]
+
+.column[
+.right[.card[.large_vertical[![System Call Pattern](../images/sep_syscall_pattern.png)]]]
+]
+
+---
+class: split-70
+
+# Delay in drivers
+
+Write a driver that prints hello every second
+
+We have to use the `Alarm` HIL as a generic type for our driver.
+
+.column[
+```rust
+use kernel::hil::time::{Alarm, AlarmClient, Frequency};
+use kernel::debug;
+use kernel::{AppId, Driver, ReturnCode, Grant};
+
+pub struct Hello<A: 'static + Alarm<'static>> {
+    alarm: &'static A,
+}
+
+impl<A: 'static + Alarm<'static>> Hello<A> {
+    pub fn new(alarm: &'static A) -> Hello<A> {
+        Hello { alarm: alarm }
+    }
+}
+```
+
+The `Alarm` trait cannot be used as `&'static dyn Alarm` due to its implementation (it has an assoctiated type `Alarm::Frequency`)
+
+]
+
+.column[
+.right[.card[.small_vertical[![Alarm](../images/sep_alarm.png)]]]
+]
+
+---
+
+## Alarm Implementation
+
+Implement `Driver` and `AlarmClient`
+
+```rust
+impl<A: 'static + Alarm<'static>> Driver for Hello<A> {
+    fn command(
+        &self,
+        command_num: usize,
+        _data1: usize,
+        _data2: usize,
+        _app_id: AppId,
+    ) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            1 => {
+                // set an alarm
+                self.alarm.set_alarm(
+                    self.alarm
+                        .now()
+                        .wrapping_add(<A::Frequency>::frequency() / 1000));
+                ReturnCode::SUCCESS
+            }
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+
+impl<A: 'static + Alarm<'static>> AlarmClient for Hello<A> {
+    fn fired(&self) {
+        debug! ("hello");
+        // next alarm
+        self.alarm.set_alarm(
+            self.alarm
+                .now()
+                .wrapping_add(<A::Frequency>::frequency() / 1000));
+    }
+}
+```
+
+---
+## Set the timeout
+
+The `<A::Frequency>::frequency()` returns the MCU's alarm frequency, meaning how many tics
+the timer will have per second.
+
+`alarm.now ()` returns the current tics number
+
+`wrapping_add` add two numbers with wrapping overflow
+
+---
+# Workpoint 3 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Modify the seven segment driver to display one number with several digits.
+
+```rust
+use core::cell::Cell;
+use kernel::hil::gpio::Pin;
+use kernel::{AppId, Driver, ReturnCode};
+
+pub const DRIVER_NUM: usize = 0xa0000001;
+
+const SEGMENT_MAP: [u8; 10] = [0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90];
+const SEGMENT_SELECT: [u8; 4] = [0xF1, 0xF2, 0xF4, 0xF8];
+
+pub struct SevenSeg {
+    latch_pin: &'static dyn Pin,
+    clock_pin: &'static dyn Pin,
+    data_pin: &'static dyn Pin,
+    number: Cell<u8>,
+    enabled: Cell<bool>,
+}
+
+impl SevenSeg {
+    pub fn new(
+        latch_pin: &'static dyn Pin,
+        clock_pin: &'static dyn Pin,
+        data_pin: &'static dyn Pin,
+    ) -> SevenSeg {
+        latch_pin.make_output();
+        clock_pin.make_output();
+        data_pin.make_output();
+        SevenSeg {
+            latch_pin,
+            clock_pin,
+            data_pin,
+            number: Cell::new(0),
+            position: Cell::new(0),
+            enabled: Cell::new(false),
+        }
+    }
+
+    pub fn shift_out(&self, value: u8) {
+        for i in (0..=7).rev() {
+            if ((value >> i) & 0x01) == 1 {
+                self.data_pin.set();
+            } else {
+                self.data_pin.clear();
+            }
+            self.clock_pin.set();
+            self.clock_pin.clear();
+        }
+    }
+
+    pub fn write_number_to_position(&self, number: u8, position: u8) {
+        self.shift_out(number);
+        self.shift_out(position);
+        self.latch_pin.set();
+        self.latch_pin.clear();
+    }
+}
+
+impl Driver for SevenSeg {
+    fn command(
+        &self,
+        command_num: usize,
+        data1: usize,
+        data2: usize,
+        _app_id: AppId,
+    ) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            1 => {
+                self.enabled.set(true);
+                ReturnCode::SUCCESS
+            }
+            2 => {
+                self.write_number_to_position(0xFF, SEGMENT_SELECT[self.position.get() as usize]);
+                self.enabled.set(false);
+                ReturnCode::SUCCESS
+            }
+            3 => {
+                self.number.set(data1 as u8);
+                ReturnCode::SUCCESS
+            }
+            4 => ReturnCode::SuccessWithValue {
+                value: self.number.get() as usize,
+            },
+            _ => ReturnCode::ENOSUPPORT,
+        }
+    }
+}
+```
+
+Hint: add an alarm to the driver to display a digit every 10 ms.
+
+---
+
+# Sending Buffers
+
+Apps may share data with drivers using the `allow` system call and `AppSlice<Shared>` and `Gants`.
+
+```rust
+struct AppData {
+    buffer: Option<AppSlice<Shared>>
+}
+
+struct Print {
+    grant: Grant<AppData>
+    // ...
+}
+
+impl Driver for Print {
+    fn allow(&self, appid: AppId, allow_num: usize, slice: Option<AppSlice<Shared, u8>>,) -> ReturnCode {
+        match allow_num {
+            0 => self
+                .apps
+                .enter(appid, |app, _| {
+                    app.buffer = slice;
+                    ReturnCode::SUCCESS
+                }).unwrap_or_else(|err| err.into()),
+            _ => ReturnCode::ENOSUPPORT
+        }
+    }
+    // ...
+}
+```
+
+---
+# Workpoint 4 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Implement the full print driver in `print.rs`.
+
+```rust
+impl Driver for Print {
+    fn allow(&self, appid: AppId, allow_num: usize, slice: Option<AppSlice<Shared, u8>>,) -> ReturnCode {
+        match allow_num {
+            0 => self
+                .apps
+                .enter(appid, |app, _| {
+                    app.buffer = slice;
+                    ReturnCode::SUCCESS
+                }).unwrap_or_else(|err| err.into()),
+            _ => ReturnCode::ENOSUPPORT
+        }
+    }
+    fn command(&self, command_num: usize, data1: usize, data2: usize, appid: AppId) -> ReturnCode {
+        match command_num {
+            0 => ReturnCode::SUCCESS,
+            // ...
+            _ => ReturnCode::ENOSUPPORT
+        }
+    }
+}
+```
+
+Hint: use `debug!` to print data.
+
+---
+# One buffer for each app
+
+Use `Grant` with an `AppSlice<Shared>`.
+
+```rust
+struct AppData {
+    slice: AppSlice<Shared>,
+    // ...
+}
+```
+
+---
+# Screen and Touch
+
+[LittlevGL](https://lvgl.io/) version 6
+  - [documentation](https://docs.lvgl.io/v6/en/html/)
+  - example in `examples/lvgl`
+
+Use `tock-ipw/tock` branch `touchscreen`.
+
+```bash
+$ cd tock-ipw/tock
+$ git pull
+$ git checkout touchscreen
+```
+
+Use `tock-ipw/libtock-c` branch `touch`.
+
+```bash
+$ cd tock-ipw/libtock-c
+$ git pull
+$ git checkout touch
+```
+
+---
+# Workpoint 5 .top_image[![Work In Progress](../images/work_in_progress.png)]
+
+Write an application that displays nine buttons on the screen.
+When a button is pressed, display the corresponding 
+digit on the seven segment display.
+
+Start from `examples/lvgl`.
+
+
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../script/playground.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+		navigation: {
+				scroll: false
+			}
+    });
+    window.cPlaygroundUrl = "https://cplayground.com/";
+    window.playgroundUrl = "https://play.rust-lang.org/";
+    </script>
+  </body>
+</html>
