@@ -146,7 +146,7 @@ How do we notify the process?
 ---
 ## Optional Cell
 
-Similar to Cell<Option<T>>, but has some useful functions:
+Similar to `Cell<Option<T>>`, but has some useful functions:
 
 .right[.card[.large_vertical[![OptionalCell](../images/sep_optionalcell.png)]]]
 
@@ -334,6 +334,16 @@ the timer will have per second.
 `alarm.now ()` returns the current tics number
 
 `wrapping_add` add two numbers with wrapping overflow
+
+---
+## Intialize the alarm using `VirtualAlarm` in `main.rs`
+
+```rust
+let sevenseg_alarm = static_init!(
+    VirtualMuxAlarm<'static, stm32f412g::tim2::Tim2>,
+    VirtualMuxAlarm::new(mux_alarm)
+);
+```
 
 ---
 # Workpoint 3 .top_image[![Work In Progress](../images/work_in_progress.png)]
