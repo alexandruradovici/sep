@@ -345,6 +345,11 @@ let sevenseg_alarm = static_init!(
     VirtualMuxAlarm<'static, stm32f412g::tim2::Tim2>,
     VirtualMuxAlarm::new(mux_alarm)
 );
+
+let hello = static_init!(
+    hello::Hello<VirtualMuxAlarm<'static, stm32f412g::tim2::Tim2<'static>>>,
+    hello::Hello::new(hello_alarm)
+);
 ```
 
 ---
