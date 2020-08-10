@@ -407,8 +407,8 @@ impl SevenSeg {
     }
 
     pub fn write_number_to_position(&self, number: u8, position: u8) {
-        self.shift_out(number);
-        self.shift_out(position);
+        self.shift_out(SEGEMNT_MAP[number]);
+        self.shift_out(SEGMENT_SELECT[position]);
         self.latch_pin.set();
         self.latch_pin.clear();
     }
