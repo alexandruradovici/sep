@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Secure Embedded Programming - ESP Serial Tutorial</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../style/style.css"></link>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Secure Embedded Programming
+
+.title[.center[![SecureEmbeddedProgramming](../images/sep.png)]]
+
+.left[
+Cosmin-Daniel Radu & Teona Severin
+]
+
+---
+
+# Day 6
+
+1. How to install and use ESP Serial
+
+---
+
+# Create a new directory, change directory to it then run the following commands.
+
+```sh
+mkdir esp_serial
+cd esp_serial
+npm install esp_serial
+cp /node_module/esp_serial/index.js .
+```
+---
+
+# To run the esp_serial use the following command.
+
+```sh
+node index.js [device_port] [baudRate]
+```
+---
+
+# To initiate the esp_serial add the following code in the main.rs.
+
+```rust
+// Setup the console.
+let console = components::console::ConsoleComponent::new(board_kernel, uart_mux).finalize(());
+
+let console_esp =
+    components::esp_serial_component::ESPSerialComponent::new(board_kernel, uart_mux)
+        .finalize(());
+// Create the debugger object that handles calls to `debug!()`.
+components::debug_writer::DebugWriterComponent::new(uart_mux).finalize(());
+```
+---
+
+# You can find an example of the application in the libtock-c/examples/esp_serial/
+
+```C
+#include <stdio.h>
+#include <esp_serial.h>
+#include <timer.h>
+
+static void esp_event (char* buffer, int len) {
+    printf("Received %d characters from kernel - %s\n", len, buffer);
+}
+
+int main(void) {
+    subscribe_user_callback(esp_event, NULL);
+    int portSrc = 2399;
+    int linkId;
+    bind("192.168.1.100", 8080, &portSrc, &linkId);
+    // send ip, port, mesaj, lungime
+    send_UDP_payload(18, "salut, ce mai faci", linkId);
+    send_UDP_payload(27, "ce parere ai daca ai merge?", linkId);
+    // demo - hardcoded ip (esp in not connected yet)
+    get_esp_ip();
+    return 0;
+}
+```
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../script/playground.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+		navigation: {
+				scroll: false
+			}
+    });
+    window.cPlaygroundUrl = "https://cplayground.com/";
+    window.playgroundUrl = "https://play.rust-lang.org/";
+    </script>
+  </body>
+</html>
